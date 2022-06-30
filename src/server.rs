@@ -1,5 +1,5 @@
-pub struct Server<'a> {
-    pub sid: &'a str,
-    pub name: &'a str,
-    pub description: &'a str,
+pub struct Server {
+    pub sid: String,
+    pub name: String,
+    pub description: String,
 }

@@ -2,17 +2,16 @@ use crate::server::Server;
 use std::collections::HashMap;
 
 #[derive(Default)]
-pub struct Network<'a> {
-    servers: HashMap<&'a str, &'a Server<'a>>,
+pub struct Network {
+    servers: HashMap<String, Server>,
 }
 
-impl<'a> Network<'a> {
+impl Network {
     pub fn new() -> Self {
         Default::default()
     }
 
-    pub fn add_server(&mut self, server: &'a Server) {
-        self.servers.insert(server.sid, server);
-        self.servers.insert(server.name, server);
+    pub fn add_server(&mut self, server: Server) {
+        self.servers.insert(server.sid.clone(), server);
     }
 }

@@ -25,7 +25,7 @@ impl Haematite {
         }
     }
 
-    fn handle_line(&mut self, socket: &TcpStream, line: Line) {
+    fn handle_line(&mut self, socket: &TcpStream, line: Line) -> bool {
         match line.command {
             "PASS" => self.uplink = Some(line.args[3].to_string()),
             "SERVER" => self.network.add_server(Server {
@@ -52,8 +52,12 @@ impl Haematite {
                     format!(":{} PONG {} {}", self.me.sid, self.me.name, source),
                 );
             }
-            _ => {}
+            "NOTICE" => { /* silently eat */ }
+            _ => {
+                return false;
+            }
         }
+        return true;
     }
 }
 
@@ -100,10 +104,12 @@ fn main() {
 
         // chop off \r\n
         buffer.drain(len - 2..len);
-        println!("< {}", from_utf8(&buffer).unwrap().to_owned());
 
         let line = Line::from(&buffer);
-        haematite.handle_line(&socket, line);
+        if !haematite.handle_line(&socket, line) {
+            // only print lines we don't understand
+            println!("< {}", from_utf8(&buffer).unwrap().to_owned());
+        }
 
         buffer.clear();
     }

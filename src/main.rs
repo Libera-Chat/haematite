@@ -5,15 +5,17 @@ mod network;
 mod server;
 mod user;
 
+use std::io::{BufRead, BufReader, Write};
+use std::net::TcpStream;
+use std::str::from_utf8;
+
+use colored::{Color, Colorize};
+
 use channel::Channel;
 use line::Line;
 use network::Network;
 use server::Server;
 use user::User;
-
-use std::io::{BufRead, BufReader, Write};
-use std::net::TcpStream;
-use std::str::from_utf8;
 
 struct Haematite {
     network: Network,
@@ -145,10 +147,16 @@ fn main() {
         buffer.drain(len - 2..len);
 
         let line = Line::from(&buffer);
-        if !haematite.handle_line(&socket, &line) {
-            // only print lines we don't understand
-            println!("< {}", from_utf8(&buffer).unwrap().to_owned());
-        }
+        let handled = haematite.handle_line(&socket, &line);
+
+        let printable = from_utf8(&buffer).unwrap().to_string();
+        println!(
+            "< {}",
+            match handled {
+                true => printable.normal(),
+                false => printable.color(Color::Red),
+            }
+        );
 
         buffer.clear();
     }

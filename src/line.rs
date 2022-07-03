@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::str::from_utf8;
 
+#[derive(Debug)]
 pub struct Line<'a> {
     pub source: Option<&'a str>,
     pub command: &'a str,

@@ -13,12 +13,12 @@ impl Network {
         Default::default()
     }
 
-    pub fn add_server(&mut self, server: Server) {
-        self.servers.insert(server.sid.clone(), server);
+    pub fn add_server(&mut self, server: Server) -> bool {
+        self.servers.insert(server.sid.clone(), server).is_none()
     }
 
-    pub fn del_server(&mut self, sid: &str) {
-        self.servers.remove(sid).unwrap();
+    pub fn del_server(&mut self, sid: &str) -> bool {
+        self.servers.remove(sid).is_some()
     }
 
     pub fn get_server_mut(&mut self, sid: &str) -> &mut Server {

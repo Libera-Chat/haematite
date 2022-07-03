@@ -10,7 +10,7 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn add_user(mut self, user: User) {
-        self.users.insert(user.uid.clone(), user);
+    pub fn add_user(&mut self, user: User) -> bool {
+        self.users.insert(user.uid.clone(), user).is_none()
     }
 }

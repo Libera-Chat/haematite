@@ -18,4 +18,8 @@ impl Network {
     pub fn del_server(&mut self, sid: &str) {
         self.servers.remove(sid).unwrap();
     }
+
+    pub fn get_server(self, sid: &str) -> &Server {
+        self.servers.get(sid).unwrap()
+    }
 }

@@ -1,6 +1,7 @@
 mod line;
 mod network;
 mod server;
+mod user;
 
 use line::Line;
 use network::Network;
@@ -32,16 +33,22 @@ impl Haematite {
                 sid: self.uplink.take().unwrap(),
                 name: line.args[0].to_string(),
                 description: line.args[2].to_string(),
+                ..Default::default()
             }),
             "SID" => {
                 let server = Server {
                     sid: line.args[2].to_string(),
                     name: line.args[0].to_string(),
                     description: line.args[3].to_string(),
+                    ..Default::default()
                 };
                 self.network.add_server(server);
             }
             "SQUIT" => self.network.del_server(line.args[0]),
+            //:00A EUID alis 2 1656866967 +Sio alis atheme.vpn.lolnerd.net 0 00AAAAAAB * * :Channel Directory
+            "EUID" => {
+                let _server = self.network.get_server(line.source.unwrap());
+            }
             "PING" => {
                 let source = match line.source {
                     Some(source) => source,
@@ -74,6 +81,7 @@ fn main() {
         sid: String::from("111"),
         name: String::from("haematite.vpn.lolnerd.net"),
         description: String::from("haematite psuedoserver"),
+        ..Default::default()
     });
 
     let socket = TcpStream::connect("husky.vpn.lolnerd.net:6667").expect("failed to connect");

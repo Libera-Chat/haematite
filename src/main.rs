@@ -60,6 +60,13 @@ impl Haematite {
                 let uid = line.args[7].to_string();
                 server.add_user(uid, User::new(line.args[0].to_string()));
             }
+            //:420AAAABC AWAY :afk
+            "AWAY" => {
+                let uid = line.source.unwrap();
+                let sid = &uid[..3];
+                let server = self.network.get_server_mut(sid);
+                server.get_user_mut(uid).away = line.args.first().map(|r| r.to_string());
+            }
             //:420AAAABC OPER jess admin
             "OPER" => {
                 let uid = line.source.unwrap();

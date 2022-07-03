@@ -74,7 +74,7 @@ impl Haematite {
                     None => line.args[0],
                 };
                 send(
-                    &socket,
+                    socket,
                     format!(":{} PONG {} {}", self.me.sid, self.me.name, source),
                 );
             }
@@ -83,7 +83,7 @@ impl Haematite {
                 return false;
             }
         }
-        return true;
+        true
     }
 }
 
@@ -91,7 +91,7 @@ const PASSWORD: &str = "8m1RXdPW2HG8lakqJF53N6DYZRA6xRy0ORjIqod65RWok482rhgBQUfN
 
 fn send(mut socket: &TcpStream, data: String) {
     println!("> {}", data);
-    socket.write_all(&data.as_bytes()).expect("asd");
+    socket.write_all(data.as_bytes()).expect("asd");
     socket.write_all(b"\r\n").expect("asd");
 }
 

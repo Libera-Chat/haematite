@@ -14,13 +14,13 @@ impl<'a> Line<'a> {
             _ => 0,
         });
 
-        if source.len() > 0 {
+        if !source.is_empty() {
             source = &source[1..];
             line = &line[1..];
         }
 
         let mut args: VecDeque<&[u8]> = VecDeque::new();
-        while line.len() > 0 {
+        while !line.is_empty() {
             let arg_end = match line.first() {
                 Some(b':') => {
                     line = &line[1..];
@@ -32,13 +32,13 @@ impl<'a> Line<'a> {
             line = remaining;
             args.push_back(arg);
 
-            if line.len() > 0 {
+            if !line.is_empty() {
                 line = &line[1..]
             }
         }
 
         Line {
-            source: from_utf8(&source).ok(),
+            source: from_utf8(source).ok(),
             command: from_utf8(args.pop_front().unwrap()).unwrap(),
             args: args.iter().map(|&a| from_utf8(a).unwrap()).collect(),
         }

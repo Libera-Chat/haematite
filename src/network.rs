@@ -4,13 +4,17 @@ use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct Network {
+    pub me: Server,
     servers: HashMap<String, Server>,
     channels: HashMap<String, Channel>,
 }
 
 impl Network {
-    pub fn new() -> Self {
-        Default::default()
+    pub fn new(me: Server) -> Self {
+        Network {
+            me,
+            ..Default::default()
+        }
     }
 
     pub fn add_server(&mut self, server: Server) -> bool {

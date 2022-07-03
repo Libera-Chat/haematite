@@ -1,0 +1,161 @@
+use std::net::TcpStream;
+
+use crate::channel::Channel;
+use crate::handler::Handler;
+use crate::line::Line;
+use crate::network::Network;
+use crate::send;
+use crate::server::Server;
+use crate::user::User;
+
+#[derive(Default)]
+pub struct TS6Handler {
+    uplink: Option<String>,
+}
+
+impl TS6Handler {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    fn handle_line_none(&mut self, network: &mut Network, socket: &TcpStream, line: &Line) -> bool {
+        match line.command {
+            "PASS" => self.uplink = Some(line.args[3].to_string()),
+            "SERVER" => {
+                network.add_server(Server {
+                    sid: self.uplink.take().unwrap(),
+                    name: line.args[0].to_string(),
+                    description: line.args[2].to_string(),
+                    ..Default::default()
+                });
+            }
+            "PING" => {
+                let source = match line.source {
+                    Some(source) => source,
+                    None => line.args[0],
+                };
+                send(
+                    socket,
+                    format!(":{} PONG {} {}", network.me.sid, network.me.name, source),
+                );
+            }
+            _ => {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn handle_line_sid(&mut self, network: &mut Network, sid: &str, line: &Line) -> bool {
+        match line.command {
+            "SID" => {
+                network.add_server(Server {
+                    sid: line.args[2].to_string(),
+                    name: line.args[0].to_string(),
+                    description: line.args[3].to_string(),
+                    ..Default::default()
+                });
+            }
+            "SQUIT" => {
+                let sid = line.args[0];
+                network.del_server(sid);
+            }
+            //:420 EUID jess 1 1656880345 +QZaioswz a0Ob4s0oLV test. fd84:9d71:8b8:1::1 420AAAABD husky.vpn.lolnerd.net jess :big meow
+            "EUID" => {
+                let uid = line.args[7].to_string();
+                let nickname = line.args[0].to_string();
+                let username = line.args[4].to_string();
+                let realname = line.args[10].to_string();
+                let account = match line.args[9] {
+                    "*" => None,
+                    account => Some(account.to_string()),
+                };
+                let ip = match line.args[6] {
+                    "0" => None,
+                    ip => Some(ip.to_string()),
+                };
+                let realhost = line.args[8].to_string();
+                let showhost = line.args[5].to_string();
+
+                let server = network.get_server_mut(sid);
+                server.add_user(
+                    uid,
+                    User::new(
+                        nickname, username, realname, account, ip, realhost, showhost,
+                    ),
+                );
+            }
+            //:00A CHGHOST 420AAAABD husky.vpn.lolnerd.net
+            "CHGHOST" => {
+                let uid = line.args[0];
+                let sid = &uid[..3];
+                let server = network.get_server_mut(sid);
+                server.get_user_mut(uid).showhost = line.args[1].to_string();
+            }
+            "SJOIN" => {
+                //:420 SJOIN 1640815917 #gaynet +MOPnst :@00AAAAAAC 420AAAABC
+                let name = line.args[1].to_string();
+                let users = line.args[3].split(' ').map(|u| u.to_owned());
+                network.add_channel(name, Channel::new(users));
+            }
+            _ => {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn handle_line_uid(&mut self, network: &mut Network, uid: &str, line: &Line) -> bool {
+        match line.command {
+            //:420AAAABC QUIT :Quit: Reconnecting
+            "QUIT" => {
+                let sid = &uid[..3];
+                let server = network.get_server_mut(sid);
+                server.del_user(uid);
+            }
+            //:420AAAABC AWAY :afk
+            "AWAY" => {
+                let sid = &uid[..3];
+                let server = network.get_server_mut(sid);
+                server.get_user_mut(uid).away = line.args.first().map(|r| r.to_string());
+            }
+            //:420AAAABC OPER jess admin
+            "OPER" => {
+                let sid = &uid[..3];
+                let server = network.get_server_mut(sid);
+                server.get_user_mut(uid).oper = Some(line.args[0].to_string());
+            }
+            _ => {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+impl Handler for TS6Handler {
+    fn get_burst<'a>(&self, network: &Network, password: &'a str) -> Vec<String> {
+        vec![
+            format!("PASS {} TS 6 :{}", password, network.me.sid),
+            "CAPAB :BAN CHW CLUSTER ECHO ENCAP EOPMOD EUID EX IE KLN KNOCK MLOCK QS RSFNC SAVE SERVICES TB UNKLN".to_string(),
+            format!(
+                "SERVER {} 1 :{}",
+                network.me.name, network.me.description
+            )
+        ]
+    }
+
+    fn handle(&mut self, network: &mut Network, socket: &TcpStream, line: &Line) -> bool {
+        match line.source {
+            /* messages from our uplink to us.
+            these should be the only thing that needs to respond, so give it socket */
+            None => self.handle_line_none(network, socket, line),
+            // lines sourced from a server
+            Some(sid) if sid.len() == 3 => self.handle_line_sid(network, sid, line),
+            // lines sourced from a user
+            Some(uid) if uid.len() == 9 => self.handle_line_uid(network, uid, line),
+            // no idea mate
+            _ => false,
+        }
+    }
+}

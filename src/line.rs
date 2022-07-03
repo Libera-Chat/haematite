@@ -12,8 +12,11 @@ impl<'a> Line<'a> {
     pub fn from(mut line: &'a [u8]) -> Self {
         let source = match line.first() {
             Some(b':') => {
+                // find next space
                 let end = line.iter().position(|&c| c == b' ').unwrap();
+                // grab out source, sans preceding ":", sans trailing space
                 let source = &line[1..end];
+                // drop space after source from mutable line
                 line = &line[end + 1..];
                 Some(from_utf8(source).unwrap())
             }
@@ -24,6 +27,8 @@ impl<'a> Line<'a> {
         while !line.is_empty() {
             let arg_end = match line.first() {
                 Some(b':') => {
+                    /* we've got an arg that starts with ":",
+                       everything after it is one whole arg */
                     line = &line[1..];
                     line.len()
                 }

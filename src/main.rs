@@ -56,11 +56,37 @@ impl Haematite {
                 let sid = line.args[0];
                 self.network.del_server(sid);
             }
-            //:00A EUID alis 2 1656866967 +Sio alis atheme.vpn.lolnerd.net 0 00AAAAAAB * * :Channel Directory
+            //:420AAAABC QUIT :Quit: Reconnecting
+            "QUIT" => {
+                let uid = line.source.unwrap();
+                let sid = &uid[..3];
+                let server = self.network.get_server_mut(sid);
+                server.del_user(uid);
+            }
+            //:420 EUID jess 1 1656880345 +QZaioswz a0Ob4s0oLV test. fd84:9d71:8b8:1::1 420AAAABD husky.vpn.lolnerd.net jess :big meow
             "EUID" => {
-                let server = self.network.get_server_mut(line.source.unwrap());
                 let uid = line.args[7].to_string();
-                server.add_user(uid, User::new(line.args[0].to_string()));
+                let nickname = line.args[0].to_string();
+                let username = line.args[4].to_string();
+                let realname = line.args[10].to_string();
+                let account = match line.args[9] {
+                    "*" => None,
+                    account => Some(account.to_string()),
+                };
+                let ip = match line.args[6] {
+                    "0" => None,
+                    ip => Some(ip.to_string()),
+                };
+                let realhost = line.args[8].to_string();
+                let showhost = line.args[5].to_string();
+
+                let server = self.network.get_server_mut(line.source.unwrap());
+                server.add_user(
+                    uid,
+                    User::new(
+                        nickname, username, realname, account, ip, realhost, showhost,
+                    ),
+                );
             }
             //:420AAAABC AWAY :afk
             "AWAY" => {

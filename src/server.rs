@@ -14,6 +14,10 @@ impl Server {
         self.users.insert(uid, user).is_none()
     }
 
+    pub fn del_user(&mut self, uid: &str) -> bool {
+        self.users.remove(uid).is_some()
+    }
+
     pub fn get_user_mut(&mut self, uid: &str) -> &mut User {
         self.users.get_mut(uid).unwrap()
     }

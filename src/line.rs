@@ -14,7 +14,7 @@ impl<'a> Line<'a> {
             Some(b':') => {
                 let end = line.iter().position(|&c| c == b' ').unwrap();
                 let source = &line[1..end];
-                line = &line[end+1..];
+                line = &line[end + 1..];
                 Some(from_utf8(source).unwrap())
             }
             _ => None,

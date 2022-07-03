@@ -13,6 +13,7 @@ use std::str::from_utf8;
 struct Haematite {
     network: Network,
     me: Server,
+    uplink: Option<String>,
 }
 
 impl Haematite {
@@ -20,11 +21,18 @@ impl Haematite {
         Haematite {
             network: Network::new(),
             me: me,
+            uplink: None,
         }
     }
 
     fn handle_line(&mut self, socket: &TcpStream, line: Line) {
         match line.command {
+            "PASS" => self.uplink = Some(line.args[3].to_string()),
+            "SERVER" => self.network.add_server(Server {
+                sid: self.uplink.take().unwrap(),
+                name: line.args[0].to_string(),
+                description: line.args[2].to_string(),
+            }),
             "SID" => {
                 let server = Server {
                     sid: line.args[2].to_string(),
@@ -33,9 +41,7 @@ impl Haematite {
                 };
                 self.network.add_server(server);
             }
-            "SQUIT" => {
-                self.network.del_server(line.args[0]);
-            }
+            "SQUIT" => self.network.del_server(line.args[0]),
             "PING" => {
                 let source = match line.source {
                     Some(source) => source,

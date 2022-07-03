@@ -9,16 +9,16 @@ pub struct Line<'a> {
 }
 
 impl<'a> Line<'a> {
-    pub fn from(line: &'a [u8]) -> Self {
-        let (mut source, mut line) = line.split_at(match line.first() {
-            Some(b':') => line.iter().position(|&c| c == b' ').unwrap(),
-            _ => 0,
-        });
-
-        if !source.is_empty() {
-            source = &source[1..];
-            line = &line[1..];
-        }
+    pub fn from(mut line: &'a [u8]) -> Self {
+        let source = match line.first() {
+            Some(b':') => {
+                let end = line.iter().position(|&c| c == b' ').unwrap();
+                let source = &line[1..end];
+                line = &line[end+1..];
+                Some(from_utf8(source).unwrap())
+            }
+            _ => None,
+        };
 
         let mut args: VecDeque<&[u8]> = VecDeque::new();
         while !line.is_empty() {
@@ -39,7 +39,7 @@ impl<'a> Line<'a> {
         }
 
         Line {
-            source: from_utf8(source).ok(),
+            source,
             command: from_utf8(args.pop_front().unwrap()).unwrap(),
             args: args.iter().map(|&a| from_utf8(a).unwrap()).collect(),
         }

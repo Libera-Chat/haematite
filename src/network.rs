@@ -19,7 +19,7 @@ impl Network {
         self.servers.remove(sid).unwrap();
     }
 
-    pub fn get_server(self, sid: &str) -> &Server {
-        self.servers.get(sid).unwrap()
+    pub fn get_server_mut(&mut self, sid: &str) -> &mut Server {
+        self.servers.get_mut(sid).unwrap()
     }
 }

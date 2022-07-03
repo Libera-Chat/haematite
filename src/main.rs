@@ -6,6 +6,7 @@ mod user;
 use line::Line;
 use network::Network;
 use server::Server;
+use user::User;
 
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
@@ -47,7 +48,11 @@ impl Haematite {
             "SQUIT" => self.network.del_server(line.args[0]),
             //:00A EUID alis 2 1656866967 +Sio alis atheme.vpn.lolnerd.net 0 00AAAAAAB * * :Channel Directory
             "EUID" => {
-                let _server = self.network.get_server(line.source.unwrap());
+                let server = self.network.get_server_mut(line.source.unwrap());
+                server.add_user(User {
+                    uid: line.args[7].to_string(),
+                    nickname: line.args[0].to_string(),
+                });
             }
             "PING" => {
                 let source = match line.source {

@@ -8,3 +8,9 @@ pub struct Server {
     pub description: String,
     pub users: HashMap<String, User>,
 }
+
+impl Server {
+    pub fn add_user(mut self, user: User) {
+        self.users.insert(user.uid.clone(), user);
+    }
+}

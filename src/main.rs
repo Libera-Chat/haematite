@@ -57,10 +57,15 @@ impl Haematite {
             //:00A EUID alis 2 1656866967 +Sio alis atheme.vpn.lolnerd.net 0 00AAAAAAB * * :Channel Directory
             "EUID" => {
                 let server = self.network.get_server_mut(line.source.unwrap());
-                server.add_user(User {
-                    uid: line.args[7].to_string(),
-                    nickname: line.args[0].to_string(),
-                });
+                let uid = line.args[7].to_string();
+                server.add_user(uid, User::new(line.args[0].to_string()));
+            }
+            //:420AAAABC OPER jess admin
+            "OPER" => {
+                let uid = line.source.unwrap();
+                let sid = &uid[..3];
+                let server = self.network.get_server_mut(sid);
+                server.get_user_mut(uid).oper = Some(line.args[0].to_string());
             }
             "SJOIN" => {
                 //:420 SJOIN 1640815917 #gaynet +MOPnst :@00AAAAAAC 420AAAABC

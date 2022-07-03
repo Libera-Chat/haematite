@@ -46,6 +46,29 @@ impl TS6Handler {
         true
     }
 
+    fn handle_line_encap(
+        &mut self,
+        network: &mut Network,
+        _sid: &str,
+        _target: &str,
+        command: &str,
+        args: &[&str],
+    ) -> bool {
+        match command {
+            //:00A ENCAP * SU :420AAAABF
+            //:00A ENCAP * SU 420AAAABF :jess
+            "SU" => {
+                let uid = args[0];
+                let server = network.get_server_mut(&uid[..3]);
+                server.get_user_mut(uid).account = args.get(1).map(|a| a.to_string());
+            }
+            _ => {
+                return false;
+            }
+        }
+        false
+    }
+
     fn handle_line_sid(&mut self, network: &mut Network, sid: &str, line: &Line) -> bool {
         match line.command {
             "SID" => {
@@ -97,6 +120,15 @@ impl TS6Handler {
                 let name = line.args[1].to_string();
                 let users = line.args[3].split(' ').map(|u| u.to_owned());
                 network.add_channel(name, Channel::new(users));
+            }
+            "ENCAP" => {
+                return self.handle_line_encap(
+                    network,
+                    sid,
+                    line.args[0],
+                    line.args[1],
+                    &line.args[2..],
+                );
             }
             _ => {
                 return false;

@@ -28,7 +28,7 @@ impl<'a> Line<'a> {
             let arg_end = match line.first() {
                 Some(b':') => {
                     /* we've got an arg that starts with ":",
-                       everything after it is one whole arg */
+                    everything after it is one whole arg */
                     line = &line[1..];
                     line.len()
                 }

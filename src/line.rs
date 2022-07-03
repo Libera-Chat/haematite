@@ -9,12 +9,13 @@ pub struct Line<'a> {
 
 impl<'a> Line<'a> {
     pub fn from(line: &'a [u8]) -> Self {
-        let (source, mut line) = line.split_at(match line.first() {
+        let (mut source, mut line) = line.split_at(match line.first() {
             Some(b':') => line.iter().position(|&c| c == b' ').unwrap(),
             _ => 0,
         });
 
         if source.len() > 0 {
+            source = &source[1..];
             line = &line[1..];
         }
 

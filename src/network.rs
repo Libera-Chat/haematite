@@ -1,9 +1,11 @@
+use crate::channel::Channel;
 use crate::server::Server;
 use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct Network {
     servers: HashMap<String, Server>,
+    channels: HashMap<String, Channel>,
 }
 
 impl Network {
@@ -21,5 +23,9 @@ impl Network {
 
     pub fn get_server_mut(&mut self, sid: &str) -> &mut Server {
         self.servers.get_mut(sid).unwrap()
+    }
+
+    pub fn add_channel(&mut self, name: String, channel: Channel) -> bool {
+        self.channels.insert(name, channel).is_none()
     }
 }

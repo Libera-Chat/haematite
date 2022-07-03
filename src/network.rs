@@ -14,4 +14,8 @@ impl Network {
     pub fn add_server(&mut self, server: Server) {
         self.servers.insert(server.sid.clone(), server);
     }
+
+    pub fn del_server(&mut self, sid: &str) {
+        self.servers.remove(sid).unwrap();
+    }
 }

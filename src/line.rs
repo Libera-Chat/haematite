@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::str::from_utf8;
 
 pub struct Line<'a> {
     pub source: Option<&'a str>,
@@ -6,38 +7,39 @@ pub struct Line<'a> {
     pub args: Vec<&'a str>,
 }
 
-impl Line {
-    pub fn from(line_full: String) -> Self {
-        let mut offset = 0;
+impl<'a> Line<'a> {
+    pub fn from(line: &'a [u8]) -> Self {
+        let (source, mut line) = line.split_at(match line.first() {
+            Some(b':') => line.iter().position(|&c| c == b' ').unwrap(),
+            _ => 0,
+        });
 
-        let source = match line_full.chars().next() {
-            Some(':') => {
-                offset = line_full.find(' ').unwrap() + 1;
-                Some(&line_full[0..offset - 1])
+        if source.len() > 0 {
+            line = &line[1..];
+        }
+
+        let mut args: VecDeque<&[u8]> = VecDeque::new();
+        while line.len() > 0 {
+            let arg_end = match line.first() {
+                Some(b':') => {
+                    line = &line[1..];
+                    line.len()
+                }
+                _ => line.iter().position(|&c| c == b' ').unwrap_or(line.len()),
+            };
+            let (arg, remaining) = line.split_at(arg_end);
+            line = remaining;
+            args.push_back(arg);
+
+            if line.len() > 0 {
+                line = &line[1..]
             }
-            _ => None,
-        };
-
-        let mut line = &line_full[offset..];
-        let trailing = match line.find(" :") {
-            Some(i) => {
-                let out = Some(&line[i + 2..]);
-                line = &line[..i];
-                out
-            }
-            _ => None,
-        };
-
-        let mut args: VecDeque<&str> = line.split(' ').collect();
-        match trailing {
-            Some(s) => args.push_back(s),
-            None => {}
-        };
+        }
 
         Line {
-            source: source,
-            command: args.pop_front().unwrap(),
-            args: args.into(),
+            source: from_utf8(&source).ok(),
+            command: from_utf8(args.pop_front().unwrap()).unwrap(),
+            args: args.iter().map(|&a| from_utf8(a).unwrap()).collect(),
         }
     }
 }

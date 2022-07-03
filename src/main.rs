@@ -33,6 +33,9 @@ impl Haematite {
                 };
                 self.network.add_server(server);
             }
+            "SQUIT" => {
+                self.network.del_server(line.args[0]);
+            }
             "PING" => {
                 let source = match line.source {
                     Some(source) => source,
@@ -90,12 +93,11 @@ fn main() {
         }
 
         // chop off \r\n
-        buffer.drain(len - 1..len);
-        let line_decode = from_utf8(&buffer).unwrap().to_owned();
-        println!("< {}", line_decode);
+        buffer.drain(len - 2..len);
+        println!("< {}", from_utf8(&buffer).unwrap().to_owned());
 
-        let line_tokenised = Line::from(line_decode);
-        haematite.handle_line(&socket, line_tokenised);
+        let line = Line::from(&buffer);
+        haematite.handle_line(&socket, line);
 
         buffer.clear();
     }

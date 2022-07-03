@@ -8,7 +8,6 @@ pub struct Channel {
 
 impl Channel {
     pub fn new(users: impl Iterator<Item = String>) -> Self {
-        //TODO: turn `users` in to HashMap
         Channel {
             users: users.map(|u| (u, ChannelUser::new())).into_iter().collect(),
         }

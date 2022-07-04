@@ -20,8 +20,8 @@ impl TS6Handler {
 
     fn handle_line_none(&mut self, network: &mut Network, socket: &TcpStream, line: &Line) -> bool {
         match line.command {
-            "PASS" => self.uplink = Some(line.args[3].to_string()),
-            "SERVER" => {
+            b"PASS" => self.uplink = Some(line.args[3].to_string()),
+            b"SERVER" => {
                 network.add_server(Server {
                     sid: self.uplink.take().unwrap(),
                     name: line.args[0].to_string(),
@@ -29,7 +29,7 @@ impl TS6Handler {
                     ..Default::default()
                 });
             }
-            "PING" => {
+            b"PING" => {
                 let source = match line.source {
                     Some(source) => source,
                     None => line.args[0],
@@ -71,7 +71,7 @@ impl TS6Handler {
 
     fn handle_line_sid(&mut self, network: &mut Network, sid: &str, line: &Line) -> bool {
         match line.command {
-            "SID" => {
+            b"SID" => {
                 network.add_server(Server {
                     sid: line.args[2].to_string(),
                     name: line.args[0].to_string(),
@@ -79,12 +79,12 @@ impl TS6Handler {
                     ..Default::default()
                 });
             }
-            "SQUIT" => {
+            b"SQUIT" => {
                 let sid = line.args[0];
                 network.del_server(sid);
             }
             //:420 EUID jess 1 1656880345 +QZaioswz a0Ob4s0oLV test. fd84:9d71:8b8:1::1 420AAAABD husky.vpn.lolnerd.net jess :big meow
-            "EUID" => {
+            b"EUID" => {
                 let uid = line.args[7].to_string();
                 let nickname = line.args[0].to_string();
                 let username = line.args[4].to_string();
@@ -99,29 +99,30 @@ impl TS6Handler {
                 };
                 let realhost = line.args[8].to_string();
                 let showhost = line.args[5].to_string();
+                let modes = line.args[3][1..].chars();
 
                 let server = network.get_server_mut(sid);
                 server.add_user(
                     uid,
                     User::new(
-                        nickname, username, realname, account, ip, realhost, showhost,
+                        nickname, username, realname, account, ip, realhost, showhost, modes,
                     ),
                 );
             }
             //:00A CHGHOST 420AAAABD husky.vpn.lolnerd.net
-            "CHGHOST" => {
+            b"CHGHOST" => {
                 let uid = line.args[0];
                 let sid = &uid[..3];
                 let server = network.get_server_mut(sid);
                 server.get_user_mut(uid).showhost = line.args[1].to_string();
             }
-            "SJOIN" => {
+            b"SJOIN" => {
                 //:420 SJOIN 1640815917 #gaynet +MOPnst :@00AAAAAAC 420AAAABC
                 let name = line.args[1].to_string();
                 let users = line.args[3].split(' ').map(|u| u.to_owned());
                 network.add_channel(name, Channel::new(users));
             }
-            "ENCAP" => {
+            b"ENCAP" => {
                 return self.handle_line_encap(
                     network,
                     sid,

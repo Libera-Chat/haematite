@@ -4,7 +4,7 @@ use std::str::from_utf8;
 #[derive(Debug)]
 pub struct Line<'a> {
     pub source: Option<&'a str>,
-    pub command: &'a str,
+    pub command: &'a [u8],
     pub args: Vec<&'a str>,
 }
 
@@ -45,7 +45,7 @@ impl<'a> Line<'a> {
 
         Line {
             source,
-            command: from_utf8(args.pop_front().unwrap()).unwrap(),
+            command: args.pop_front().unwrap(),
             args: args.iter().map(|&a| from_utf8(a).unwrap()).collect(),
         }
     }

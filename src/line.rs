@@ -2,6 +2,14 @@ use std::collections::VecDeque;
 use std::str::from_utf8;
 
 #[derive(Debug)]
+pub enum LineError {
+    MissingSpace,
+    MissingCommand,
+    SourceDecode,
+    ArgDecode(usize),
+}
+
+#[derive(Debug)]
 pub struct Line<'a> {
     pub source: Option<&'a str>,
     pub command: &'a [u8],
@@ -9,16 +17,19 @@ pub struct Line<'a> {
 }
 
 impl<'a> Line<'a> {
-    pub fn from(mut line: &'a [u8]) -> Self {
+    pub fn from(mut line: &'a [u8]) -> Result<Self, LineError> {
         let source = match line.first() {
             Some(b':') => {
                 // find next space
-                let end = line.iter().position(|&c| c == b' ').unwrap();
+                let end = line
+                    .iter()
+                    .position(|&c| c == b' ')
+                    .ok_or(LineError::MissingSpace)?;
                 // grab out source, sans preceding ":", sans trailing space
                 let source = &line[1..end];
                 // drop space after source from mutable line
                 line = &line[end + 1..];
-                Some(from_utf8(source).unwrap())
+                Some(from_utf8(source).map_err(|_| LineError::SourceDecode)?)
             }
             _ => None,
         };
@@ -43,10 +54,14 @@ impl<'a> Line<'a> {
             }
         }
 
-        Line {
+        Ok(Line {
             source,
-            command: args.pop_front().unwrap(),
-            args: args.iter().map(|&a| from_utf8(a).unwrap()).collect(),
-        }
+            command: args.pop_front().ok_or(LineError::MissingCommand)?,
+            args: args
+                .iter()
+                .enumerate()
+                .map(|(i, a)| from_utf8(a).map_err(|_e| LineError::ArgDecode(i)))
+                .collect::<Result<Vec<_>, _>>()?,
+        })
     }
 }

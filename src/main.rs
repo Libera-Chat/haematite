@@ -75,7 +75,13 @@ fn main() {
         // chop off \r\n
         buffer.drain(len - 2..len);
 
-        let line = Line::from(&buffer);
+        let line = match Line::from(&buffer) {
+            Ok(line) => line,
+            Err(e) => {
+                eprintln!("failed to parse line: {:?}", e);
+                std::process::exit(1);
+            }
+        };
         let handled = haematite.handle(&socket, &line);
 
         let printable = from_utf8(&buffer).unwrap().to_string();

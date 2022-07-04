@@ -1,12 +1,37 @@
+use std::collections::VecDeque;
 use std::net::TcpStream;
 
 use crate::channel::Channel;
 use crate::handler::Handler;
 use crate::line::Line;
+use crate::mode::modes_from;
 use crate::network::Network;
 use crate::send;
 use crate::server::Server;
 use crate::user::User;
+
+fn mode_args(
+    modes: impl Iterator<Item = (char, bool)>,
+    args: &[&str],
+) -> impl Iterator<Item = (char, bool, Option<String>)> {
+    let mut out = Vec::new();
+    let mut args = VecDeque::from_iter(args);
+
+    for (mode, remove) in modes {
+        let has_arg = match mode {
+            'k' => true,
+            'f' | 'j' | 'l' if !remove => true,
+            _ => false,
+        };
+        let arg = match has_arg {
+            true => Some(args.pop_front().unwrap().to_string()),
+            false => None,
+        };
+        out.push((mode, remove, arg));
+    }
+
+    out.into_iter()
+}
 
 #[derive(Default)]
 pub struct TS6Handler {
@@ -122,7 +147,14 @@ impl TS6Handler {
                 //:420 SJOIN 1640815917 #gaynet +MOPnst :@00AAAAAAC 420AAAABC
                 let name = line.args[1].to_string();
                 let _users = line.args[3].split(' ').map(|u| u.to_owned());
-                network.add_channel(name, Channel::new());
+                let mut channel = Channel::new();
+
+                let modes = modes_from(line.args[2]);
+                for (mode, _, arg) in mode_args(modes, &line.args[3..line.args.len() - 1]) {
+                    channel.modes.insert(mode, arg);
+                }
+
+                network.add_channel(name, channel);
             }
             b"ENCAP" => {
                 return self.handle_line_encap(
@@ -159,6 +191,18 @@ impl TS6Handler {
                 let sid = &uid[..3];
                 let server = network.get_server_mut(sid);
                 server.get_user_mut(uid).oper = Some(line.args[0].to_string());
+            }
+            //:420AAAABG TMODE 1656966926 #test -m+mi-i
+            b"TMODE" => {
+                let channel = network.get_channel_mut(line.args[1]);
+                let modes = modes_from(line.args[2]);
+
+                for (mode, remove, arg) in mode_args(modes, &line.args[3..]) {
+                    match remove {
+                        false => channel.modes.insert(mode, arg),
+                        true => channel.modes.remove(&mode),
+                    };
+                }
             }
             _ => {
                 return false;

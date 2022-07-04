@@ -32,4 +32,8 @@ impl Network {
     pub fn add_channel(&mut self, name: String, channel: Channel) -> bool {
         self.channels.insert(name, channel).is_none()
     }
+
+    pub fn get_channel_mut(&mut self, name: &str) -> &mut Channel {
+        self.channels.get_mut(name).unwrap()
+    }
 }

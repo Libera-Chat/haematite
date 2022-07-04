@@ -6,7 +6,7 @@ pub enum LineError {
     MissingSpace,
     MissingCommand,
     SourceDecode,
-    ArgDecode,
+    ArgDecode(usize),
 }
 
 #[derive(Debug)]
@@ -59,9 +59,9 @@ impl<'a> Line<'a> {
             command: args.pop_front().ok_or(LineError::MissingCommand)?,
             args: args
                 .iter()
-                .map(|a| from_utf8(a))
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|_e| LineError::ArgDecode)?,
+                .enumerate()
+                .map(|(i, a)| from_utf8(a).map_err(|_e| LineError::ArgDecode(i)))
+                .collect::<Result<Vec<_>, _>>()?,
         })
     }
 }

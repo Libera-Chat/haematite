@@ -78,7 +78,7 @@ fn main() {
         let line = match Line::from(&buffer) {
             Ok(line) => line,
             Err(e) => {
-                eprintln!("{:?}", e);
+                eprintln!("failed to parse line: {:?}", e);
                 std::process::exit(1);
             }
         };

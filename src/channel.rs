@@ -1,19 +1,8 @@
-use crate::channel_user::ChannelUser;
-use std::collections::HashMap;
-
 #[derive(Default)]
-pub struct Channel {
-    users: HashMap<String, ChannelUser>,
-}
+pub struct Channel {}
 
 impl Channel {
-    pub fn new(users: impl Iterator<Item = String>) -> Self {
-        Channel {
-            users: users.map(|u| (u, ChannelUser::new())).into_iter().collect(),
-        }
-    }
-
-    pub fn add_user(mut self, uid: String, channel_user: ChannelUser) -> bool {
-        self.users.insert(uid, channel_user).is_none()
+    pub fn new() -> Self {
+        Default::default()
     }
 }

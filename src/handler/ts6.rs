@@ -121,8 +121,8 @@ impl TS6Handler {
             b"SJOIN" => {
                 //:420 SJOIN 1640815917 #gaynet +MOPnst :@00AAAAAAC 420AAAABC
                 let name = line.args[1].to_string();
-                let users = line.args[3].split(' ').map(|u| u.to_owned());
-                network.add_channel(name, Channel::new(users));
+                let _users = line.args[3].split(' ').map(|u| u.to_owned());
+                network.add_channel(name, Channel::new());
             }
             b"ENCAP" => {
                 return self.handle_line_encap(

@@ -1,5 +1,4 @@
 mod channel;
-mod channel_user;
 mod handler;
 mod line;
 mod network;

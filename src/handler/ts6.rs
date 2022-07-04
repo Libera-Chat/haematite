@@ -141,19 +141,19 @@ impl TS6Handler {
     fn handle_line_uid(&mut self, network: &mut Network, uid: &str, line: &Line) -> bool {
         match line.command {
             //:420AAAABC QUIT :Quit: Reconnecting
-            "QUIT" => {
+            b"QUIT" => {
                 let sid = &uid[..3];
                 let server = network.get_server_mut(sid);
                 server.del_user(uid);
             }
             //:420AAAABC AWAY :afk
-            "AWAY" => {
+            b"AWAY" => {
                 let sid = &uid[..3];
                 let server = network.get_server_mut(sid);
                 server.get_user_mut(uid).away = line.args.first().map(|r| r.to_string());
             }
             //:420AAAABC OPER jess admin
-            "OPER" => {
+            b"OPER" => {
                 let sid = &uid[..3];
                 let server = network.get_server_mut(sid);
                 server.get_user_mut(uid).oper = Some(line.args[0].to_string());

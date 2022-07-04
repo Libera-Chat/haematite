@@ -97,15 +97,17 @@ impl TS6Handler {
                     "0" => None,
                     ip => Some(ip.to_string()),
                 };
-                let realhost = line.args[8].to_string();
-                let showhost = line.args[5].to_string();
-                let modes = line.args[3][1..].chars();
+                let rdns = match line.args[8] {
+                    "*" => None,
+                    rdns => Some(rdns.to_string())
+                };
+                let host = line.args[5].to_string();
 
                 let server = network.get_server_mut(sid);
                 server.add_user(
                     uid,
                     User::new(
-                        nickname, username, realname, account, ip, realhost, showhost, modes,
+                        nickname, username, realname, account, ip, rdns, host
                     ),
                 );
             }
@@ -114,7 +116,7 @@ impl TS6Handler {
                 let uid = line.args[0];
                 let sid = &uid[..3];
                 let server = network.get_server_mut(sid);
-                server.get_user_mut(uid).showhost = line.args[1].to_string();
+                server.get_user_mut(uid).host = line.args[1].to_string();
             }
             b"SJOIN" => {
                 //:420 SJOIN 1640815917 #gaynet +MOPnst :@00AAAAAAC 420AAAABC

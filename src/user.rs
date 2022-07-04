@@ -5,8 +5,8 @@ pub struct User {
     pub realname: String,
     pub account: Option<String>,
     pub ip: Option<String>,
-    pub realhost: String,
-    pub showhost: String,
+    pub rdns: Option<String>,
+    pub host: String,
 
     pub oper: Option<String>,
     pub away: Option<String>,
@@ -19,8 +19,8 @@ impl User {
         realname: String,
         account: Option<String>,
         ip: Option<String>,
-        realhost: String,
-        showhost: String,
+        rdns: Option<String>,
+        host: String,
     ) -> Self {
         User {
             nickname,
@@ -28,8 +28,8 @@ impl User {
             realname,
             account,
             ip,
-            realhost,
-            showhost,
+            rdns,
+            host,
             ..Default::default()
         }
     }

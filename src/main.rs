@@ -1,8 +1,11 @@
+mod ban;
 mod channel;
 mod handler;
+mod hostmask;
 mod line;
 mod mode;
 mod network;
+mod oper;
 mod server;
 mod user;
 

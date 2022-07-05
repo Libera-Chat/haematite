@@ -1,12 +1,17 @@
+use std::collections::HashMap;
+
+use linked_hash_set::LinkedHashSet;
+
+use crate::ban::Ban;
 use crate::channel::Channel;
 use crate::server::Server;
-use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct Network {
     pub me: Server,
     servers: HashMap<String, Server>,
     channels: HashMap<String, Channel>,
+    pub bans: HashMap<char, LinkedHashSet<Ban>>,
 }
 
 impl Network {

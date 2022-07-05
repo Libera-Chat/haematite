@@ -147,7 +147,7 @@ impl TS6Handler {
                 let mut channel = Channel::new();
 
                 let modes = modes_from(&line.args[2]);
-                let args = line.args[3..line.args.len()].to_vec();
+                let args = line.args[3..].to_vec();
                 for (mode, _, arg) in mode_args(modes, args) {
                     channel.modes.insert(mode, arg);
                 }

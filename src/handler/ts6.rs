@@ -208,6 +208,8 @@ impl TS6Handler {
                 }
 
                 if user.oper.is_some() && !user.modes.contains(&'o') {
+                    /* something (hopefully this mode change) caused this user to lose +o,
+                    so they're no longer opered */
                     user.oper = None;
                 }
             }

@@ -60,9 +60,17 @@ fn main() {
 
     let socket = TcpStream::connect("husky.vpn.lolnerd.net:6667").expect("failed to connect");
 
-    for line in haematite.handler.get_burst(&haematite.network, PASSWORD) {
-        send(&socket, line);
-    }
+    match haematite.handler.get_burst(&haematite.network, PASSWORD) {
+        Err(burst_err) => {
+            eprintln!("failed to make burst: {}", burst_err);
+            std::process::exit(1);
+        }
+        Ok(burst) => {
+            for line in burst {
+                send(&socket, line);
+            }
+        }
+    };
 
     let mut reader = BufReader::with_capacity(512, &socket);
     let mut buffer = Vec::<u8>::with_capacity(512);
@@ -79,7 +87,7 @@ fn main() {
             Ok(line) => line,
             Err(e) => {
                 eprintln!("failed to parse line: {:?}", e);
-                std::process::exit(1);
+                std::process::exit(2);
             }
         };
         let handled = haematite.handle(&socket, &line);

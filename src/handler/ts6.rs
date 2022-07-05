@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::net::TcpStream;
+use std::time::SystemTime;
 
 use crate::channel::Channel;
 use crate::handler::Handler;
@@ -234,15 +235,22 @@ impl TS6Handler {
 }
 
 impl Handler for TS6Handler {
-    fn get_burst<'a>(&self, network: &Network, password: &'a str) -> Vec<String> {
-        vec![
+    fn get_burst<'a>(
+        &self,
+        network: &Network,
+        password: &'a str,
+    ) -> Result<Vec<String>, &'static str> {
+        let now = SystemTime::now();
+
+        Ok(vec![
             format!("PASS {} TS 6 :{}", password, network.me.sid),
             "CAPAB :BAN CHW CLUSTER ECHO ENCAP EOPMOD EUID EX IE KLN KNOCK MLOCK QS RSFNC SAVE SERVICES TB UNKLN".to_string(),
             format!(
                 "SERVER {} 1 :{}",
                 network.me.name, network.me.description
-            )
-        ]
+            ),
+            format!("SVINFO 6 6 0 {}", now.duration_since(SystemTime::UNIX_EPOCH).map_err(|_e| "GRAN PROBLEMA DE TIEMPO")?.as_secs()),
+        ])
     }
 
     fn handle(&mut self, network: &mut Network, socket: &TcpStream, line: &Line) -> bool {

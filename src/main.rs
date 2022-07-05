@@ -1,6 +1,7 @@
 mod channel;
 mod handler;
 mod line;
+mod mode;
 mod network;
 mod server;
 mod user;

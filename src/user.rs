@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 #[derive(Default)]
 pub struct User {
     pub nickname: String,
@@ -8,6 +10,7 @@ pub struct User {
     pub rdns: Option<String>,
     pub host: String,
 
+    pub modes: HashSet<char>,
     pub oper: Option<String>,
     pub away: Option<String>,
 }

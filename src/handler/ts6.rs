@@ -251,13 +251,13 @@ impl Handler for TS6Handler {
         ])
     }
 
-    fn handle(&mut self, network: &mut Network, line: Line) -> HandlerResult {
+    fn handle(&mut self, network: &mut Network, line: &Line) -> HandlerResult {
         match &line.source {
-            None => self.handle_line_none(network, &line),
+            None => self.handle_line_none(network, line),
             // lines sourced from a server
-            Some(sid) if sid.len() == 3 => self.handle_line_sid(network, sid, &line),
+            Some(sid) if sid.len() == 3 => self.handle_line_sid(network, sid, line),
             // lines sourced from a user
-            Some(uid) if uid.len() == 9 => self.handle_line_uid(network, uid, &line),
+            Some(uid) if uid.len() == 9 => self.handle_line_uid(network, uid, line),
             // no idea mate
             _ => HandlerResult::Unhandled,
         }

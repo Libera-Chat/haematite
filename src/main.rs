@@ -40,7 +40,7 @@ impl<T: Handler> Haematite<T> {
     }
 
     pub fn handle(&mut self, line: Line) -> HandlerResult {
-        self.handler.handle(&mut self.network, line)
+        self.handler.handle(&mut self.network, &line)
     }
 }
 

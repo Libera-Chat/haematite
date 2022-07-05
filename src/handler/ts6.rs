@@ -124,7 +124,7 @@ impl TS6Handler {
                 };
                 let rdns = match line.args[8] {
                     "*" => None,
-                    rdns => Some(rdns.to_string())
+                    rdns => Some(rdns.to_string()),
                 };
                 let host = line.args[5].to_string();
 

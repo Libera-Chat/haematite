@@ -10,14 +10,14 @@ pub enum LineError {
 }
 
 #[derive(Debug)]
-pub struct Line<'a> {
-    pub source: Option<&'a str>,
-    pub command: &'a [u8],
-    pub args: Vec<&'a str>,
+pub struct Line {
+    pub source: Option<String>,
+    pub command: Vec<u8>,
+    pub args: Vec<String>,
 }
 
-impl<'a> Line<'a> {
-    pub fn from(mut line: &'a [u8]) -> Result<Self, LineError> {
+impl Line {
+    pub fn from(mut line: &[u8]) -> Result<Self, LineError> {
         let source = match line.first() {
             Some(b':') => {
                 // find next space
@@ -29,7 +29,11 @@ impl<'a> Line<'a> {
                 let source = &line[1..end];
                 // drop space after source from mutable line
                 line = &line[end + 1..];
-                Some(from_utf8(source).map_err(|_| LineError::SourceDecode)?)
+                Some(
+                    from_utf8(source)
+                        .map_err(|_| LineError::SourceDecode)?
+                        .to_string(),
+                )
             }
             _ => None,
         };
@@ -56,11 +60,15 @@ impl<'a> Line<'a> {
 
         Ok(Line {
             source,
-            command: args.pop_front().ok_or(LineError::MissingCommand)?,
+            command: args.pop_front().ok_or(LineError::MissingCommand)?.to_vec(),
             args: args
                 .iter()
                 .enumerate()
-                .map(|(i, a)| from_utf8(a).map_err(|_e| LineError::ArgDecode(i)))
+                .map(|(i, a)| {
+                    from_utf8(a)
+                        .map(|a| a.to_string())
+                        .map_err(|_e| LineError::ArgDecode(i))
+                })
                 .collect::<Result<Vec<_>, _>>()?,
         })
     }

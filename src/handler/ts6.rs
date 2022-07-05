@@ -129,12 +129,13 @@ impl TS6Handler {
                 let host = line.args[5].to_string();
 
                 let server = network.get_server_mut(sid);
-                server.add_user(
-                    uid,
-                    User::new(
-                        nickname, username, realname, account, ip, rdns, host
-                    ),
-                );
+                let mut user = User::new(nickname, username, realname, account, ip, rdns, host);
+
+                for (mode, _) in modes_from(line.args[3]) {
+                    user.modes.insert(mode);
+                }
+
+                server.add_user(uid, user);
             }
             //:00A CHGHOST 420AAAABD husky.vpn.lolnerd.net
             b"CHGHOST" => {
@@ -191,6 +192,24 @@ impl TS6Handler {
                 let sid = &uid[..3];
                 let server = network.get_server_mut(sid);
                 server.get_user_mut(uid).oper = Some(line.args[0].to_string());
+            }
+            //:420AAAABG MODE 420AAAABG :+p-z
+            b"MODE" => {
+                let uid = line.args[0];
+                let sid = &uid[..3];
+                let server = network.get_server_mut(sid);
+                let user = server.get_user_mut(uid);
+
+                for (mode, remove) in modes_from(line.args[1]) {
+                    match remove {
+                        false => user.modes.insert(mode),
+                        true => user.modes.remove(&mode),
+                    };
+                }
+
+                if user.oper.is_some() && !user.modes.contains(&'o') {
+                    user.oper = None;
+                }
             }
             //:420AAAABG TMODE 1656966926 #test -m+mi-i
             b"TMODE" => {

@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::time::SystemTime;
 
 use crate::channel::Channel;
@@ -11,10 +10,10 @@ use crate::user::User;
 
 fn mode_args(
     modes: impl Iterator<Item = (char, bool)>,
-    args: Vec<String>,
+    args: impl IntoIterator<Item = String>,
 ) -> impl Iterator<Item = (char, bool, Option<String>)> {
     let mut out = Vec::new();
-    let mut args = VecDeque::from_iter(args);
+    let mut args = args.into_iter();
 
     for (mode, remove) in modes {
         let has_arg = match mode {
@@ -23,7 +22,7 @@ fn mode_args(
             _ => false,
         };
         let arg = match has_arg {
-            true => Some(args.pop_front().unwrap()),
+            true => Some(args.next().unwrap()),
             false => None,
         };
         out.push((mode, remove, arg));

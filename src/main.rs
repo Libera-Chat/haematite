@@ -13,7 +13,7 @@ use std::str::from_utf8;
 use colored::{Color, Colorize};
 
 use crate::handler::ts6::TS6Handler;
-use crate::handler::Handler;
+use crate::handler::{Handler, HandlerResult};
 use crate::line::Line;
 use crate::network::Network;
 use crate::server::Server;
@@ -26,10 +26,7 @@ fn send(mut socket: &TcpStream, data: String) {
     socket.write_all(b"\r\n").expect("asd");
 }
 
-struct Haematite<T>
-where
-    T: Handler,
-{
+struct Haematite<T: Handler> {
     network: Network,
     handler: T,
 }
@@ -42,8 +39,8 @@ impl<T: Handler> Haematite<T> {
         }
     }
 
-    pub fn handle(&mut self, socket: &TcpStream, line: &Line) -> bool {
-        self.handler.handle(&mut self.network, socket, line)
+    pub fn handle(&mut self, line: Line) -> HandlerResult {
+        self.handler.handle(&mut self.network, &line)
     }
 }
 
@@ -90,16 +87,20 @@ fn main() {
                 std::process::exit(2);
             }
         };
-        let handled = haematite.handle(&socket, &line);
+        let handled = haematite.handle(line);
 
         let printable = from_utf8(&buffer).unwrap().to_string();
-        println!(
-            "< {}",
-            match handled {
-                true => printable.normal(),
-                false => printable.color(Color::Red),
+        let printable = match handled {
+            HandlerResult::Unhandled => printable.color(Color::Red),
+            _ => printable.normal(),
+        };
+        println!("< {}", printable);
+
+        if let HandlerResult::Response(lines) = handled {
+            for line in lines {
+                send(&socket, line);
             }
-        );
+        }
 
         buffer.clear();
     }

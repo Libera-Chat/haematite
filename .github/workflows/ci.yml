@@ -42,7 +42,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -W clippy::pedantic
+          args: -- -D clippy::pedantic
   rustfmt:
     name: Rustfmt
     runs-on: ubuntu-latest

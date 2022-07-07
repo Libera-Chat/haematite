@@ -13,14 +13,14 @@ use std::str::from_utf8;
 use colored::{Color, Colorize};
 
 use crate::handler::ts6::TS6Handler;
-use crate::handler::{Handler, HandlerResult};
+use crate::handler::{Handler, Outcome};
 use crate::line::Line;
 use crate::network::Network;
 use crate::server::Server;
 
 const PASSWORD: &str = "8m1RXdPW2HG8lakqJF53N6DYZRA6xRy0ORjIqod65RWok482rhgBQUfNTYcaJorJ";
 
-fn send(mut socket: &TcpStream, data: String) {
+fn send(mut socket: &TcpStream, data: &str) {
     println!("> {}", data);
     socket.write_all(data.as_bytes()).expect("asd");
     socket.write_all(b"\r\n").expect("asd");
@@ -39,8 +39,8 @@ impl<T: Handler> Haematite<T> {
         }
     }
 
-    pub fn handle(&mut self, line: Line) -> HandlerResult {
-        self.handler.handle(&mut self.network, &line)
+    pub fn handle(&mut self, line: &Line) -> Outcome {
+        self.handler.handle(&mut self.network, line)
     }
 }
 
@@ -50,7 +50,7 @@ fn main() {
             sid: String::from("111"),
             name: String::from("haematite.vpn.lolnerd.net"),
             description: String::from("haematite psuedoserver"),
-            ..Default::default()
+            ..Server::default()
         },
         TS6Handler::new(),
     );
@@ -64,7 +64,7 @@ fn main() {
         }
         Ok(burst) => {
             for line in burst {
-                send(&socket, line);
+                send(&socket, &line);
             }
         }
     };
@@ -87,18 +87,18 @@ fn main() {
                 std::process::exit(2);
             }
         };
-        let handled = haematite.handle(line);
+        let handled = haematite.handle(&line);
 
         let printable = from_utf8(&buffer).unwrap().to_string();
         let printable = match handled {
-            HandlerResult::Unhandled => printable.color(Color::Red),
+            Outcome::Unhandled => printable.color(Color::Red),
             _ => printable.normal(),
         };
         println!("< {}", printable);
 
-        if let HandlerResult::Response(lines) = handled {
+        if let Outcome::Response(lines) = handled {
             for line in lines {
-                send(&socket, line);
+                send(&socket, &line);
             }
         }
 

@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::str::from_utf8;
 
 #[derive(Debug)]
-pub enum LineError {
+pub enum ParseError {
     MissingSpace,
     MissingCommand,
     SourceDecode,
@@ -17,21 +17,21 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn from(mut line: &[u8]) -> Result<Self, LineError> {
+    pub fn from(mut line: &[u8]) -> Result<Self, ParseError> {
         let source = match line.first() {
             Some(b':') => {
                 // find next space
                 let end = line
                     .iter()
                     .position(|&c| c == b' ')
-                    .ok_or(LineError::MissingSpace)?;
+                    .ok_or(ParseError::MissingSpace)?;
                 // grab out source, sans preceding ":", sans trailing space
                 let source = &line[1..end];
                 // drop space after source from mutable line
                 line = &line[end + 1..];
                 Some(
                     from_utf8(source)
-                        .map_err(|_| LineError::SourceDecode)?
+                        .map_err(|_| ParseError::SourceDecode)?
                         .to_string(),
                 )
             }
@@ -54,20 +54,20 @@ impl Line {
             args.push_back(arg);
 
             if !line.is_empty() {
-                line = &line[1..]
+                line = &line[1..];
             }
         }
 
         Ok(Line {
             source,
-            command: args.pop_front().ok_or(LineError::MissingCommand)?.to_vec(),
+            command: args.pop_front().ok_or(ParseError::MissingCommand)?.to_vec(),
             args: args
                 .iter()
                 .enumerate()
                 .map(|(i, a)| {
                     from_utf8(a)
-                        .map(|a| a.to_string())
-                        .map_err(|_e| LineError::ArgDecode(i))
+                        .map(ToString::to_string)
+                        .map_err(|_e| ParseError::ArgDecode(i))
                 })
                 .collect::<Result<Vec<_>, _>>()?,
         })

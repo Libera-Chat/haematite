@@ -13,7 +13,7 @@ impl Network {
     pub fn new(me: Server) -> Self {
         Network {
             me,
-            ..Default::default()
+            ..Self::default()
         }
     }
 

@@ -1,7 +1,7 @@
 use std::time::SystemTime;
 
 use crate::channel::Channel;
-use crate::handler::{Handler, HandlerResult};
+use crate::handler::{Handler, Outcome};
 use crate::line::Line;
 use crate::mode::modes_from;
 use crate::network::Network;
@@ -21,9 +21,10 @@ fn mode_args(
             'f' | 'j' | 'l' if !remove => true,
             _ => false,
         };
-        let arg = match has_arg {
-            true => Some(args.next().unwrap()),
-            false => None,
+        let arg = if has_arg {
+            Some(args.next().unwrap())
+        } else {
+            None
         };
         out.push((mode, remove, arg));
     }
@@ -38,10 +39,10 @@ pub struct TS6Handler {
 
 impl TS6Handler {
     pub fn new() -> Self {
-        Default::default()
+        Self::default()
     }
 
-    fn handle_line_none(&mut self, network: &mut Network, line: &Line) -> HandlerResult {
+    fn handle_line_none(&mut self, network: &mut Network, line: &Line) -> Outcome {
         match line.command.as_slice() {
             b"PASS" => self.uplink = Some(line.args[3].to_string()),
             b"SERVER" => {
@@ -49,54 +50,53 @@ impl TS6Handler {
                     sid: self.uplink.take().unwrap(),
                     name: line.args[0].to_string(),
                     description: line.args[2].to_string(),
-                    ..Default::default()
+                    ..Server::default()
                 });
             }
             b"PING" => {
-                return HandlerResult::Response(vec![format!(
+                return Outcome::Response(vec![format!(
                     ":{} PONG {} {}",
                     network.me.sid, network.me.name, line.args[0]
                 )]);
             }
             _ => {
-                return HandlerResult::Unhandled;
+                return Outcome::Unhandled;
             }
         }
 
-        HandlerResult::Empty
+        Outcome::Empty
     }
 
     fn handle_line_encap(
-        &mut self,
         network: &mut Network,
         _sid: &str,
         _target: &str,
         command: &str,
         args: &[String],
-    ) -> HandlerResult {
+    ) -> Outcome {
         match command {
             //:00A ENCAP * SU :420AAAABF
             //:00A ENCAP * SU 420AAAABF :jess
             "SU" => {
                 let uid = &args[0];
                 let server = network.get_server_mut(&uid[..3]);
-                server.get_user_mut(uid).account = args.get(1).cloned();
+                server.get_user_mut(uid).account = args.get(1).map(ToString::to_string);
             }
             _ => {
-                return HandlerResult::Unhandled;
+                return Outcome::Unhandled;
             }
         }
-        HandlerResult::Empty
+        Outcome::Empty
     }
 
-    fn handle_line_sid(&mut self, network: &mut Network, sid: &str, line: &Line) -> HandlerResult {
+    fn handle_line_sid(network: &mut Network, sid: &str, line: &Line) -> Outcome {
         match line.command.as_slice() {
             b"SID" => {
                 network.add_server(Server {
                     sid: line.args[2].to_string(),
                     name: line.args[0].to_string(),
                     description: line.args[3].to_string(),
-                    ..Default::default()
+                    ..Server::default()
                 });
             }
             b"SQUIT" => {
@@ -142,7 +142,7 @@ impl TS6Handler {
             b"SJOIN" => {
                 //:420 SJOIN 1640815917 #gaynet +MOPnst :@00AAAAAAC 420AAAABC
                 let name = line.args[1].to_string();
-                let _users = line.args[3].split(' ').map(|u| u.to_owned());
+                let _users = line.args[3].split(' ').map(ToOwned::to_owned);
                 let mut channel = Channel::new();
 
                 let modes = modes_from(&line.args[2]);
@@ -154,7 +154,7 @@ impl TS6Handler {
                 network.add_channel(name, channel);
             }
             b"ENCAP" => {
-                return self.handle_line_encap(
+                return TS6Handler::handle_line_encap(
                     network,
                     sid,
                     &line.args[0],
@@ -163,14 +163,14 @@ impl TS6Handler {
                 );
             }
             _ => {
-                return HandlerResult::Unhandled;
+                return Outcome::Unhandled;
             }
         }
 
-        HandlerResult::Empty
+        Outcome::Empty
     }
 
-    fn handle_line_uid(&mut self, network: &mut Network, uid: &str, line: &Line) -> HandlerResult {
+    fn handle_line_uid(network: &mut Network, uid: &str, line: &Line) -> Outcome {
         match line.command.as_slice() {
             //:420AAAABC QUIT :Quit: Reconnecting
             b"QUIT" => {
@@ -182,7 +182,7 @@ impl TS6Handler {
             b"AWAY" => {
                 let sid = &uid[..3];
                 let server = network.get_server_mut(sid);
-                server.get_user_mut(uid).away = line.args.first().map(|r| r.to_string());
+                server.get_user_mut(uid).away = line.args.first().map(ToString::to_string);
             }
             //:420AAAABC OPER jess admin
             b"OPER" => {
@@ -198,10 +198,11 @@ impl TS6Handler {
                 let user = server.get_user_mut(uid);
 
                 for (mode, remove) in modes_from(&line.args[1]) {
-                    match remove {
-                        false => user.modes.insert(mode),
-                        true => user.modes.remove(&mode),
-                    };
+                    if remove {
+                        user.modes.remove(&mode);
+                    } else {
+                        user.modes.insert(mode);
+                    }
                 }
 
                 if user.oper.is_some() && !user.modes.contains(&'o') {
@@ -216,18 +217,19 @@ impl TS6Handler {
                 let modes = modes_from(&line.args[2]);
 
                 for (mode, remove, arg) in mode_args(modes, line.args[3..].to_vec()) {
-                    match remove {
-                        false => channel.modes.insert(mode, arg),
-                        true => channel.modes.remove(&mode),
-                    };
+                    if remove {
+                        channel.modes.remove(&mode);
+                    } else {
+                        channel.modes.insert(mode, arg);
+                    }
                 }
             }
             _ => {
-                return HandlerResult::Unhandled;
+                return Outcome::Unhandled;
             }
         }
 
-        HandlerResult::Empty
+        Outcome::Empty
     }
 }
 
@@ -250,15 +252,15 @@ impl Handler for TS6Handler {
         ])
     }
 
-    fn handle(&mut self, network: &mut Network, line: &Line) -> HandlerResult {
+    fn handle(&mut self, network: &mut Network, line: &Line) -> Outcome {
         match &line.source {
             None => self.handle_line_none(network, line),
             // lines sourced from a server
-            Some(sid) if sid.len() == 3 => self.handle_line_sid(network, sid, line),
+            Some(sid) if sid.len() == 3 => TS6Handler::handle_line_sid(network, sid, line),
             // lines sourced from a user
-            Some(uid) if uid.len() == 9 => self.handle_line_uid(network, uid, line),
+            Some(uid) if uid.len() == 9 => TS6Handler::handle_line_uid(network, uid, line),
             // no idea mate
-            _ => HandlerResult::Unhandled,
+            _ => Outcome::Unhandled,
         }
     }
 }

@@ -33,7 +33,7 @@ impl User {
             ip,
             rdns,
             host,
-            ..Default::default()
+            ..Self::default()
         }
     }
 }

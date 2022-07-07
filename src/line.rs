@@ -1,13 +1,11 @@
 use std::collections::VecDeque;
 use std::str::from_utf8;
 
-use crate::util;
+use crate::util::TakeWord as _;
 
 #[derive(Debug)]
 pub enum ParseError {
-    MissingSpace,
     MissingCommand,
-    SourceDecode,
     ArgDecode(usize),
 }
 
@@ -19,18 +17,20 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn from(line: &Vec<u8>) -> Result<Self, ParseError> {
-        let mut line = line.iter().peekable();
-
-        let source = match line.peek() {
-            Some(b':') => line.take_word().ok_or(ParseError::MissingSpace)?,
+    pub fn from(mut line: &[u8]) -> Result<Self, ParseError> {
+        let source = match line.get(0) {
+            Some(b':') => Some(&line.take_word()[1..]),
             _ => None,
         };
 
         let mut args: VecDeque<&[u8]> = VecDeque::new();
         loop {
-            let arg = match line.peek() {
-                Some(b':') => line.collect::<Vec<_>>(),
+            let arg = match line.get(0) {
+                Some(b':') => {
+                    let arg = &line[1..];
+                    line = &line[line.len()..];
+                    arg
+                }
                 Some(_) => line.take_word(),
                 None => break,
             };
@@ -38,7 +38,7 @@ impl Line {
         }
 
         Ok(Line {
-            source,
+            source: source.map(|s| from_utf8(s).unwrap().to_string()),
             command: args.pop_front().ok_or(ParseError::MissingCommand)?.to_vec(),
             args: args
                 .iter()

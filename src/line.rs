@@ -1,6 +1,8 @@
 use std::collections::VecDeque;
 use std::str::from_utf8;
 
+use crate::util;
+
 #[derive(Debug)]
 pub enum ParseError {
     MissingSpace,
@@ -17,45 +19,22 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn from(mut line: &[u8]) -> Result<Self, ParseError> {
-        let source = match line.first() {
-            Some(b':') => {
-                // find next space
-                let end = line
-                    .iter()
-                    .position(|&c| c == b' ')
-                    .ok_or(ParseError::MissingSpace)?;
-                // grab out source, sans preceding ":", sans trailing space
-                let source = &line[1..end];
-                // drop space after source from mutable line
-                line = &line[end + 1..];
-                Some(
-                    from_utf8(source)
-                        .map_err(|_| ParseError::SourceDecode)?
-                        .to_string(),
-                )
-            }
+    pub fn from(line: &Vec<u8>) -> Result<Self, ParseError> {
+        let mut line = line.iter().peekable();
+
+        let source = match line.peek() {
+            Some(b':') => line.take_word().ok_or(ParseError::MissingSpace)?,
             _ => None,
         };
 
         let mut args: VecDeque<&[u8]> = VecDeque::new();
-        while !line.is_empty() {
-            let arg_end = match line.first() {
-                Some(b':') => {
-                    /* we've got an arg that starts with ":",
-                    everything after it is one whole arg */
-                    line = &line[1..];
-                    line.len()
-                }
-                _ => line.iter().position(|&c| c == b' ').unwrap_or(line.len()),
+        loop {
+            let arg = match line.peek() {
+                Some(b':') => line.collect::<Vec<_>>(),
+                Some(_) => line.take_word(),
+                None => break,
             };
-            let (arg, remaining) = line.split_at(arg_end);
-            line = remaining;
             args.push_back(arg);
-
-            if !line.is_empty() {
-                line = &line[1..];
-            }
         }
 
         Ok(Line {

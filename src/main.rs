@@ -20,6 +20,7 @@ mod network;
 mod oper;
 mod server;
 mod user;
+mod util;
 
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;

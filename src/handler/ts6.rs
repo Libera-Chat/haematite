@@ -16,16 +16,14 @@ fn mode_args(
     let mut args = args.into_iter();
 
     for (mode, remove) in modes {
-        let has_arg = match mode {
+        let arg = match mode {
             'k' => true,
             'f' | 'j' | 'l' if !remove => true,
             _ => false,
-        };
-        let arg = if has_arg {
-            Some(args.next().unwrap())
-        } else {
-            None
-        };
+        }
+        //TODO: Resultify this unwrap
+        .then(|| args.next().unwrap());
+
         out.push((mode, remove, arg));
     }
 

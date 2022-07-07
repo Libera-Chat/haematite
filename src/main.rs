@@ -111,9 +111,9 @@ fn main() {
         };
         println!("< {}", printable);
 
-        if let Outcome::Response(lines) = handled {
-            for line in lines {
-                send(&socket, &line);
+        if let Outcome::Response(resps) = handled {
+            for resp in resps {
+                send(&socket, &resp);
             }
         }
 

@@ -1,10 +1,12 @@
 use std::time::SystemTime;
 
+use crate::ban::Ban;
 use crate::channel::Channel;
 use crate::handler::{Handler, Outcome};
 use crate::line::Line;
 use crate::mode::modes_from;
 use crate::network::Network;
+use crate::oper::Oper;
 use crate::server::Server;
 use crate::user::User;
 
@@ -159,6 +161,41 @@ impl TS6Handler {
                     &line.args[1],
                     &line.args[2..],
                 );
+            }
+            //:420 BAN K * test. 1656888029 31449600 31449600 jess!a0Ob4s0oLV@husky.vpn.lolnerd.net{jess} :moo
+            b"BAN" => {
+                let btype = line.args[0].chars().next().unwrap();
+                let mask = match btype {
+                    'K' => format!("{}@{}", line.args[1], line.args[2]),
+                    // throw or something instead. only expecting K here
+                    _ => "asd".to_string(),
+                };
+                let since = line.args[3].parse::<u64>().unwrap();
+                let duration = line.args[4].parse::<u64>().unwrap();
+                let setter = Oper::from(&line.args[6]);
+                let reason = line.args[7].to_string();
+
+                let bans = network.bans.entry(btype).or_insert_with(Default::default);
+                let ban = Ban::new(reason, since, duration, setter);
+                match duration {
+                    // this remove works because bans Eq on `mask`
+                    0 => bans.remove(&mask),
+                    _ => bans.insert(mask, ban),
+                };
+            }
+            //:420 BMASK 1656966926 #test b :test!*@*
+            b"BMASK" => {
+                let channel = network.get_channel_mut(&line.args[1]);
+                let mode = line.args[2].chars().next().unwrap();
+                let masks_new = line.args[3].split(' ').map(ToOwned::to_owned);
+
+                let masks = channel
+                    .mode_lists
+                    .entry(mode)
+                    .or_insert_with(Default::default);
+                for mask in masks_new {
+                    masks.insert(mask);
+                }
             }
             _ => {
                 return Outcome::Unhandled;

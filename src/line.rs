@@ -1,19 +1,17 @@
 use std::collections::VecDeque;
-use std::str::from_utf8;
 
 use crate::util::TakeWord as _;
 
 #[derive(Debug)]
 pub enum ParseError {
     MissingCommand,
-    ArgDecode(usize),
 }
 
 #[derive(Debug)]
 pub struct Line {
     pub source: Option<Vec<u8>>,
     pub command: Vec<u8>,
-    pub args: Vec<String>,
+    pub args: Vec<Vec<u8>>,
 }
 
 impl Line {
@@ -23,7 +21,7 @@ impl Line {
             _ => None,
         };
 
-        let mut args: VecDeque<&[u8]> = VecDeque::new();
+        let mut args: VecDeque<Vec<u8>> = VecDeque::new();
         loop {
             let arg = match line.get(0) {
                 Some(b':') => {
@@ -34,21 +32,13 @@ impl Line {
                 Some(_) => line.take_word(),
                 None => break,
             };
-            args.push_back(arg);
+            args.push_back(arg.to_vec());
         }
 
         Ok(Line {
             source,
-            command: args.pop_front().ok_or(ParseError::MissingCommand)?.to_vec(),
-            args: args
-                .iter()
-                .enumerate()
-                .map(|(i, a)| {
-                    from_utf8(a)
-                        .map(ToString::to_string)
-                        .map_err(|_e| ParseError::ArgDecode(i))
-                })
-                .collect::<Result<Vec<_>, _>>()?,
+            command: args.pop_front().ok_or(ParseError::MissingCommand)?,
+            args: args.into(),
         })
     }
 }

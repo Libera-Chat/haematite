@@ -1,3 +1,6 @@
+use encoding_rs::WINDOWS_1252;
+use std::str::from_utf8;
+
 pub trait TakeWord<'a> {
     fn take_word(&mut self) -> &'a [u8];
 }
@@ -13,5 +16,14 @@ impl<'a> TakeWord<'a> for &'a [u8] {
             *self = &self[self.len()..];
             word
         }
+    }
+}
+
+pub fn decode_hybrid(data: &[u8]) -> String {
+    if let Ok(utf8) = from_utf8(data) {
+        utf8.to_string()
+    } else {
+        let (cow, _encoding_used, _had_errors) = WINDOWS_1252.decode(data);
+        cow[..].to_string()
     }
 }

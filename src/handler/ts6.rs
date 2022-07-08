@@ -44,7 +44,7 @@ impl TS6Handler {
 
     fn handle_line_none(&mut self, network: &mut Network, line: &Line) -> Outcome {
         match line.command.as_slice() {
-            b"PASS" => self.uplink = Some(line.args[3].clone().try_into().unwrap()),
+            b"PASS" => self.uplink = Some(line.args[3].as_slice().try_into().unwrap()),
             b"SERVER" => {
                 let sid = self.uplink.take().unwrap();
                 network.servers.insert(

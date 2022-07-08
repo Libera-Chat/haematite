@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_lines)]
+//TODO: remove that ^
 use std::time::SystemTime;
 
 use crate::ban::Ban;

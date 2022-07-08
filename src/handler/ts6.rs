@@ -175,27 +175,24 @@ impl TS6Handler {
                 let setter = Oper::from(&line.args[6]);
                 let reason = line.args[7].to_string();
 
-                let bans = network
-                    .bans
-                    .entry(btype)
-                    .or_insert_with(|| Default::default());
-                let ban = Ban::new(mask, reason, since, duration, setter);
+                let bans = network.bans.entry(btype).or_insert_with(Default::default);
+                let ban = Ban::new(reason, since, duration, setter);
                 match duration {
                     // this remove works because bans Eq on `mask`
-                    0 => bans.remove(&ban),
-                    _ => bans.insert(ban),
+                    0 => bans.remove(&mask),
+                    _ => bans.insert(mask, ban),
                 };
             }
             //:420 BMASK 1656966926 #test b :test!*@*
             b"BMASK" => {
                 let channel = network.get_channel_mut(&line.args[1]);
                 let mode = line.args[2].chars().next().unwrap();
-                let masks_new = line.args[3].split(' ').map(|u| u.to_owned());
+                let masks_new = line.args[3].split(' ').map(ToOwned::to_owned);
 
                 let masks = channel
                     .mode_lists
                     .entry(mode)
-                    .or_insert_with(|| Default::default());
+                    .or_insert_with(Default::default);
                 for mask in masks_new {
                     masks.insert(mask);
                 }

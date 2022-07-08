@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use linked_hash_set::LinkedHashSet;
+use linked_hash_map::LinkedHashMap;
 
 use crate::ban::Ban;
 use crate::channel::Channel;
@@ -11,7 +11,7 @@ pub struct Network {
     pub me: Server,
     servers: HashMap<String, Server>,
     channels: HashMap<String, Channel>,
-    pub bans: HashMap<char, LinkedHashSet<Ban>>,
+    pub bans: HashMap<char, LinkedHashMap<String, Ban>>,
 }
 
 impl Network {

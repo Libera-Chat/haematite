@@ -11,7 +11,7 @@ pub enum ParseError {
 
 #[derive(Debug)]
 pub struct Line {
-    pub source: Option<String>,
+    pub source: Option<Vec<u8>>,
     pub command: Vec<u8>,
     pub args: Vec<String>,
 }
@@ -19,7 +19,7 @@ pub struct Line {
 impl Line {
     pub fn from(mut line: &[u8]) -> Result<Self, ParseError> {
         let source = match line.get(0) {
-            Some(b':') => Some(&line.take_word()[1..]),
+            Some(b':') => Some(line.take_word()[1..].to_vec()),
             _ => None,
         };
 
@@ -38,7 +38,7 @@ impl Line {
         }
 
         Ok(Line {
-            source: source.map(|s| from_utf8(s).unwrap().to_string()),
+            source,
             command: args.pop_front().ok_or(ParseError::MissingCommand)?.to_vec(),
             args: args
                 .iter()

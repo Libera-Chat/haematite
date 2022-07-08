@@ -1,3 +1,4 @@
+use std::str::from_utf8;
 use std::time::SystemTime;
 
 use crate::ban::Ban;
@@ -34,7 +35,7 @@ fn mode_args(
 
 #[derive(Default)]
 pub struct TS6Handler {
-    uplink: Option<String>,
+    uplink: Option<[u8; 3]>,
 }
 
 impl TS6Handler {
@@ -44,14 +45,18 @@ impl TS6Handler {
 
     fn handle_line_none(&mut self, network: &mut Network, line: &Line) -> Outcome {
         match line.command.as_slice() {
-            b"PASS" => self.uplink = Some(line.args[3].to_string()),
+            b"PASS" => self.uplink = Some(line.args[3].as_bytes().try_into().unwrap()),
             b"SERVER" => {
-                network.add_server(Server {
-                    sid: self.uplink.take().unwrap(),
-                    name: line.args[0].to_string(),
-                    description: line.args[2].to_string(),
-                    ..Server::default()
-                });
+                let sid = self.uplink.take().unwrap();
+                network.servers.insert(
+                    sid,
+                    Server {
+                        sid: from_utf8(&sid).unwrap().to_string(),
+                        name: line.args[0].to_string(),
+                        description: line.args[2].to_string(),
+                        ..Server::default()
+                    },
+                );
             }
             b"PING" => {
                 return Outcome::Response(vec![format!(
@@ -69,7 +74,7 @@ impl TS6Handler {
 
     fn handle_line_encap(
         network: &mut Network,
-        _sid: &str,
+        _sid: [u8; 3],
         _target: &str,
         command: &str,
         args: &[String],
@@ -78,9 +83,9 @@ impl TS6Handler {
             //:00A ENCAP * SU :420AAAABF
             //:00A ENCAP * SU 420AAAABF :jess
             "SU" => {
-                let uid = &args[0];
-                let server = network.get_server_mut(&uid[..3]);
-                server.get_user_mut(uid).account = args.get(1).map(ToString::to_string);
+                let uid = args[0].as_bytes().to_vec();
+                let server = network.servers.get_mut(&uid[..3]).unwrap();
+                server.get_user_mut(&uid).account = args.get(1).map(ToString::to_string);
             }
             _ => {
                 return Outcome::Unhandled;
@@ -89,23 +94,27 @@ impl TS6Handler {
         Outcome::Empty
     }
 
-    fn handle_line_sid(network: &mut Network, src_sid: &str, line: &Line) -> Outcome {
+    fn handle_line_sid(network: &mut Network, src_sid: [u8; 3], line: &Line) -> Outcome {
         match line.command.as_slice() {
             b"SID" => {
-                network.add_server(Server {
-                    sid: line.args[2].to_string(),
-                    name: line.args[0].to_string(),
-                    description: line.args[3].to_string(),
-                    ..Server::default()
-                });
+                let sid: [u8; 3] = line.args[2].as_bytes().try_into().unwrap();
+                network.servers.insert(
+                    sid,
+                    Server {
+                        sid: from_utf8(&sid).unwrap().to_string(),
+                        name: line.args[0].to_string(),
+                        description: line.args[3].to_string(),
+                        ..Server::default()
+                    },
+                );
             }
             b"SQUIT" => {
-                let sid = &line.args[0];
-                network.del_server(sid);
+                let sid = line.args[0].as_bytes();
+                network.servers.remove(sid);
             }
             //:420 EUID jess 1 1656880345 +QZaioswz a0Ob4s0oLV test. fd84:9d71:8b8:1::1 420AAAABD husky.vpn.lolnerd.net jess :big meow
             b"EUID" => {
-                let uid = line.args[7].to_string();
+                let uid = line.args[7].as_bytes().to_vec();
                 let nickname = line.args[0].to_string();
                 let username = line.args[4].to_string();
                 let realname = line.args[10].to_string();
@@ -123,7 +132,7 @@ impl TS6Handler {
                 };
                 let host = line.args[5].to_string();
 
-                let server = network.get_server_mut(src_sid);
+                let server = network.servers.get_mut(&src_sid).unwrap();
                 let mut user = User::new(nickname, username, realname, account, ip, rdns, host);
 
                 for (mode, _) in modes_from(&line.args[3]) {
@@ -134,10 +143,10 @@ impl TS6Handler {
             }
             //:00A CHGHOST 420AAAABD husky.vpn.lolnerd.net
             b"CHGHOST" => {
-                let uid = &line.args[0];
+                let uid = line.args[0].as_bytes().to_vec();
                 let sid = &uid[..3];
-                let server = network.get_server_mut(sid);
-                server.get_user_mut(uid).host = line.args[1].to_string();
+                let server = network.servers.get_mut(sid).unwrap();
+                server.get_user_mut(&uid).host = line.args[1].to_string();
             }
             b"SJOIN" => {
                 //:420 SJOIN 1640815917 #gaynet +MOPnst :@00AAAAAAC 420AAAABC
@@ -205,32 +214,32 @@ impl TS6Handler {
         Outcome::Empty
     }
 
-    fn handle_line_uid(network: &mut Network, src_uid: &str, line: &Line) -> Outcome {
+    fn handle_line_uid(network: &mut Network, src_uid: &[u8], line: &Line) -> Outcome {
         match line.command.as_slice() {
             //:420AAAABC QUIT :Quit: Reconnecting
             b"QUIT" => {
                 let sid = &src_uid[..3];
-                let server = network.get_server_mut(sid);
+                let server = network.servers.get_mut(sid).unwrap();
                 server.del_user(src_uid);
             }
             //:420AAAABC AWAY :afk
             b"AWAY" => {
                 let sid = &src_uid[..3];
-                let server = network.get_server_mut(sid);
+                let server = network.servers.get_mut(sid).unwrap();
                 server.get_user_mut(src_uid).away = line.args.first().map(ToString::to_string);
             }
             //:420AAAABC OPER jess admin
             b"OPER" => {
                 let sid = &src_uid[..3];
-                let server = network.get_server_mut(sid);
+                let server = network.servers.get_mut(sid).unwrap();
                 server.get_user_mut(src_uid).oper = Some(line.args[0].to_string());
             }
             //:420AAAABG MODE 420AAAABG :+p-z
             b"MODE" => {
-                let uid = &line.args[0];
+                let uid = line.args[0].as_bytes().to_vec();
                 let sid = &uid[..3];
-                let server = network.get_server_mut(sid);
-                let user = server.get_user_mut(uid);
+                let server = network.servers.get_mut(sid).unwrap();
+                let user = server.get_user_mut(&uid);
 
                 for (mode, remove) in modes_from(&line.args[1]) {
                     if remove {
@@ -291,11 +300,15 @@ impl Handler for TS6Handler {
         match &line.source {
             None => self.handle_line_none(network, line),
             // lines sourced from a server
-            Some(sid) if sid.len() == 3 => TS6Handler::handle_line_sid(network, sid, line),
-            // lines sourced from a user
-            Some(uid) if uid.len() == 9 => TS6Handler::handle_line_uid(network, uid, line),
-            // no idea mate
-            _ => Outcome::Unhandled,
+            Some(source) => {
+                if source.len() == 3 {
+                    let mut sid: [u8; 3] = [0; 3];
+                    sid.copy_from_slice(source);
+                    TS6Handler::handle_line_sid(network, sid, line)
+                } else {
+                    TS6Handler::handle_line_uid(network, source, line)
+                }
+            }
         }
     }
 }

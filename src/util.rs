@@ -27,3 +27,25 @@ pub fn decode_hybrid(data: &[u8]) -> String {
         cow[..].to_string()
     }
 }
+
+pub trait DecodeHybrid {
+    fn decode(&self) -> String;
+}
+
+impl DecodeHybrid for [u8] {
+    fn decode(&self) -> String {
+        decode_hybrid(self)
+    }
+}
+
+impl DecodeHybrid for &[u8] {
+    fn decode(&self) -> String {
+        decode_hybrid(self)
+    }
+}
+
+impl DecodeHybrid for Vec<u8> {
+    fn decode(&self) -> String {
+        decode_hybrid(self)
+    }
+}

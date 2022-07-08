@@ -11,7 +11,7 @@ use crate::network::Network;
 use crate::oper::Oper;
 use crate::server::Server;
 use crate::user::User;
-use crate::util::decode_hybrid;
+use crate::util::DecodeHybrid;
 
 fn mode_args<'a>(
     modes: impl Iterator<Item = (char, bool)>,
@@ -52,9 +52,9 @@ impl TS6Handler {
                 network.servers.insert(
                     sid,
                     Server {
-                        sid: decode_hybrid(&sid),
-                        name: decode_hybrid(&line.args[0]),
-                        description: decode_hybrid(&line.args[2]),
+                        sid: sid.decode(),
+                        name: line.args[0].decode(),
+                        description: line.args[2].decode(),
                         ..Server::default()
                     },
                 );
@@ -64,7 +64,7 @@ impl TS6Handler {
                     ":{} PONG {} {}",
                     network.me.sid,
                     network.me.name,
-                    decode_hybrid(&line.args[0]),
+                    line.args[0].decode(),
                 )]);
             }
             _ => {
@@ -88,7 +88,7 @@ impl TS6Handler {
             b"SU" => {
                 let uid = args[0].as_slice();
                 let server = network.servers.get_mut(&uid[..3]).unwrap();
-                server.get_user_mut(uid).account = args.get(1).map(|a| decode_hybrid(a));
+                server.get_user_mut(uid).account = args.get(1).map(DecodeHybrid::decode);
             }
             _ => {
                 return Outcome::Unhandled;
@@ -104,9 +104,9 @@ impl TS6Handler {
                 network.servers.insert(
                     sid,
                     Server {
-                        sid: decode_hybrid(&sid),
-                        name: decode_hybrid(&line.args[0]),
-                        description: decode_hybrid(&line.args[3]),
+                        sid: sid.decode(),
+                        name: line.args[0].decode(),
+                        description: line.args[3].decode(),
                         ..Server::default()
                     },
                 );
@@ -118,27 +118,27 @@ impl TS6Handler {
             //:420 EUID jess 1 1656880345 +QZaioswz a0Ob4s0oLV test. fd84:9d71:8b8:1::1 420AAAABD husky.vpn.lolnerd.net jess :big meow
             b"EUID" => {
                 let uid = line.args[7].clone();
-                let nickname = decode_hybrid(&line.args[0]);
-                let username = decode_hybrid(&line.args[4]);
-                let realname = decode_hybrid(&line.args[10]);
+                let nickname = line.args[0].decode();
+                let username = line.args[4].decode();
+                let realname = line.args[10].decode();
                 let account = match line.args[9].as_slice() {
                     b"*" => None,
-                    account => Some(decode_hybrid(account)),
+                    account => Some(account.decode()),
                 };
                 let ip = match line.args[6].as_slice() {
                     b"0" => None,
-                    ip => Some(decode_hybrid(ip)),
+                    ip => Some(ip.decode()),
                 };
                 let rdns = match line.args[8].as_slice() {
                     b"*" => None,
-                    rdns => Some(decode_hybrid(rdns)),
+                    rdns => Some(rdns.decode()),
                 };
-                let host = decode_hybrid(&line.args[5]);
+                let host = line.args[5].decode();
 
                 let server = network.servers.get_mut(&src_sid).unwrap();
                 let mut user = User::new(nickname, username, realname, account, ip, rdns, host);
 
-                for (mode, _) in modes_from(&decode_hybrid(&line.args[3])) {
+                for (mode, _) in modes_from(&line.args[3].decode()) {
                     user.modes.insert(mode);
                 }
 
@@ -149,18 +149,18 @@ impl TS6Handler {
                 let uid = &line.args[0];
                 let sid = &uid[..3];
                 let server = network.servers.get_mut(sid).unwrap();
-                server.get_user_mut(uid).host = decode_hybrid(&line.args[1]);
+                server.get_user_mut(uid).host = line.args[1].decode();
             }
             b"SJOIN" => {
                 //:420 SJOIN 1640815917 #gaynet +MOPnst :@00AAAAAAC 420AAAABC
-                let name = decode_hybrid(&line.args[1]);
-                let _users = decode_hybrid(&line.args[3]).split(' ');
+                let name = line.args[1].decode();
+                let _users = line.args[3].decode().split(' ');
                 let mut channel = Channel::new();
 
-                let modes = modes_from(&decode_hybrid(&line.args[2]));
+                let modes = modes_from(&line.args[2].decode());
                 let args = line.args[3..].iter();
                 for (mode, _, arg) in mode_args(modes, args) {
-                    channel.modes.insert(mode, arg.map(|a| decode_hybrid(a)));
+                    channel.modes.insert(mode, arg.map(DecodeHybrid::decode));
                 }
 
                 network.add_channel(name, channel);
@@ -178,18 +178,14 @@ impl TS6Handler {
             b"BAN" => {
                 let btype = line.args[0][0] as char;
                 let mask = match btype {
-                    'K' => format!(
-                        "{}@{}",
-                        decode_hybrid(&line.args[1]),
-                        decode_hybrid(&line.args[2])
-                    ),
+                    'K' => format!("{}@{}", line.args[1].decode(), line.args[2].decode()),
                     // throw or something instead. only expecting K here
                     _ => "asd".to_string(),
                 };
-                let since = decode_hybrid(&line.args[3]).parse::<u64>().unwrap();
-                let duration = decode_hybrid(&line.args[4]).parse::<u64>().unwrap();
-                let setter = Oper::from(&decode_hybrid(&line.args[6]));
-                let reason = decode_hybrid(&line.args[7]);
+                let since = line.args[3].decode().parse::<u64>().unwrap();
+                let duration = line.args[4].decode().parse::<u64>().unwrap();
+                let setter = Oper::from(&line.args[6].decode());
+                let reason = line.args[7].decode();
 
                 let bans = network.bans.entry(btype).or_insert_with(Default::default);
                 let ban = Ban::new(reason, since, duration, setter);
@@ -201,7 +197,7 @@ impl TS6Handler {
             }
             //:420 BMASK 1656966926 #test b :test!*@*
             b"BMASK" => {
-                let channel = network.get_channel_mut(&decode_hybrid(&line.args[1]));
+                let channel = network.get_channel_mut(&line.args[1].decode());
                 let mode = line.args[2][0] as char;
                 let masks_new = line.args[3].split(|c| c == &b' ');
 
@@ -210,7 +206,7 @@ impl TS6Handler {
                     .entry(mode)
                     .or_insert_with(Default::default);
                 for mask in masks_new {
-                    masks.insert(decode_hybrid(mask));
+                    masks.insert(mask.decode());
                 }
             }
             _ => {
@@ -233,13 +229,13 @@ impl TS6Handler {
             b"AWAY" => {
                 let sid = &src_uid[..3];
                 let server = network.servers.get_mut(sid).unwrap();
-                server.get_user_mut(src_uid).away = line.args.get(0).map(|a| decode_hybrid(a));
+                server.get_user_mut(src_uid).away = line.args.get(0).map(DecodeHybrid::decode);
             }
             //:420AAAABC OPER jess admin
             b"OPER" => {
                 let sid = &src_uid[..3];
                 let server = network.servers.get_mut(sid).unwrap();
-                server.get_user_mut(src_uid).oper = Some(decode_hybrid(&line.args[0]));
+                server.get_user_mut(src_uid).oper = Some(line.args[0].decode());
             }
             //:420AAAABG MODE 420AAAABG :+p-z
             b"MODE" => {
@@ -248,7 +244,7 @@ impl TS6Handler {
                 let server = network.servers.get_mut(sid).unwrap();
                 let user = server.get_user_mut(uid);
 
-                for (mode, remove) in modes_from(&decode_hybrid(&line.args[1])) {
+                for (mode, remove) in modes_from(&line.args[1].decode()) {
                     if remove {
                         user.modes.remove(&mode);
                     } else {
@@ -264,15 +260,15 @@ impl TS6Handler {
             }
             //:420AAAABG TMODE 1656966926 #test -m+mi-i
             b"TMODE" => {
-                let channel = network.get_channel_mut(&decode_hybrid(&line.args[1]));
-                let modes = modes_from(&decode_hybrid(&line.args[2]));
+                let channel = network.get_channel_mut(&line.args[1].decode());
+                let modes = modes_from(&line.args[2].decode());
                 let args = line.args[3..].iter();
 
                 for (mode, remove, arg) in mode_args(modes, args) {
                     if remove {
                         channel.modes.remove(&mode);
                     } else {
-                        channel.modes.insert(mode, arg.map(|a| decode_hybrid(a)));
+                        channel.modes.insert(mode, arg.map(DecodeHybrid::decode));
                     }
                 }
             }

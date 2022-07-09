@@ -1,3 +1,15 @@
+#![deny(clippy::pedantic)]
+#![deny(clippy::dbg_macro)]
+#![deny(clippy::debug_assert_with_mut_call)]
+#![deny(clippy::equatable_if_let)]
+#![deny(clippy::if_then_some_else_none)]
+#![deny(clippy::same_name_method)]
+#![deny(clippy::try_err)]
+#![deny(clippy::undocumented_unsafe_blocks)]
+#![warn(clippy::cognitive_complexity)]
+#![warn(clippy::shadow_unrelated)]
+#![allow(clippy::similar_names)]
+
 mod ban;
 mod channel;
 mod handler;
@@ -99,9 +111,9 @@ fn main() {
         };
         println!("< {}", printable);
 
-        if let Outcome::Response(lines) = handled {
-            for line in lines {
-                send(&socket, &line);
+        if let Outcome::Response(resps) = handled {
+            for resp in resps {
+                send(&socket, &resp);
             }
         }
 

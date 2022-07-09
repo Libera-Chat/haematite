@@ -89,7 +89,7 @@ impl TS6Handler {
         Outcome::Empty
     }
 
-    fn handle_line_sid(network: &mut Network, sid: &str, line: &Line) -> Outcome {
+    fn handle_line_sid(network: &mut Network, src_sid: &str, line: &Line) -> Outcome {
         match line.command.as_slice() {
             b"SID" => {
                 network.add_server(Server {
@@ -123,7 +123,7 @@ impl TS6Handler {
                 };
                 let host = line.args[5].to_string();
 
-                let server = network.get_server_mut(sid);
+                let server = network.get_server_mut(src_sid);
                 let mut user = User::new(nickname, username, realname, account, ip, rdns, host);
 
                 for (mode, _) in modes_from(&line.args[3]) {
@@ -156,7 +156,7 @@ impl TS6Handler {
             b"ENCAP" => {
                 return TS6Handler::handle_line_encap(
                     network,
-                    sid,
+                    src_sid,
                     &line.args[0],
                     &line.args[1],
                     &line.args[2..],
@@ -205,25 +205,25 @@ impl TS6Handler {
         Outcome::Empty
     }
 
-    fn handle_line_uid(network: &mut Network, uid: &str, line: &Line) -> Outcome {
+    fn handle_line_uid(network: &mut Network, src_uid: &str, line: &Line) -> Outcome {
         match line.command.as_slice() {
             //:420AAAABC QUIT :Quit: Reconnecting
             b"QUIT" => {
-                let sid = &uid[..3];
+                let sid = &src_uid[..3];
                 let server = network.get_server_mut(sid);
-                server.del_user(uid);
+                server.del_user(src_uid);
             }
             //:420AAAABC AWAY :afk
             b"AWAY" => {
-                let sid = &uid[..3];
+                let sid = &src_uid[..3];
                 let server = network.get_server_mut(sid);
-                server.get_user_mut(uid).away = line.args.first().map(ToString::to_string);
+                server.get_user_mut(src_uid).away = line.args.first().map(ToString::to_string);
             }
             //:420AAAABC OPER jess admin
             b"OPER" => {
-                let sid = &uid[..3];
+                let sid = &src_uid[..3];
                 let server = network.get_server_mut(sid);
-                server.get_user_mut(uid).oper = Some(line.args[0].to_string());
+                server.get_user_mut(src_uid).oper = Some(line.args[0].to_string());
             }
             //:420AAAABG MODE 420AAAABG :+p-z
             b"MODE" => {

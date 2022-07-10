@@ -9,7 +9,7 @@ use crate::server::Server;
 #[derive(Default)]
 pub struct Network {
     pub me: Server,
-    servers: HashMap<String, Server>,
+    pub servers: HashMap<[u8; 3], Server>,
     channels: HashMap<String, Channel>,
     pub bans: HashMap<char, LinkedHashMap<String, Ban>>,
 }
@@ -20,18 +20,6 @@ impl Network {
             me,
             ..Self::default()
         }
-    }
-
-    pub fn add_server(&mut self, server: Server) -> bool {
-        self.servers.insert(server.sid.clone(), server).is_none()
-    }
-
-    pub fn del_server(&mut self, sid: &str) -> bool {
-        self.servers.remove(sid).is_some()
-    }
-
-    pub fn get_server_mut(&mut self, sid: &str) -> &mut Server {
-        self.servers.get_mut(sid).unwrap()
     }
 
     pub fn add_channel(&mut self, name: String, channel: Channel) -> bool {

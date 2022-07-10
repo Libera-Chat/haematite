@@ -20,6 +20,7 @@ mod network;
 mod oper;
 mod server;
 mod user;
+mod util;
 
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
@@ -62,7 +63,7 @@ impl<T: Handler> Haematite<T> {
 fn main() {
     let mut haematite = Haematite::new(
         Server {
-            sid: String::from("111"),
+            sid: "111".to_string(),
             name: String::from("haematite.vpn.lolnerd.net"),
             description: String::from("haematite psuedoserver"),
             ..Server::default()

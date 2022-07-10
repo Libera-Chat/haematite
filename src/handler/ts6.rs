@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_lines)]
+//TODO: remove that ^
 use std::time::SystemTime;
 
 use crate::ban::Ban;
@@ -9,13 +11,13 @@ use crate::network::Network;
 use crate::oper::Oper;
 use crate::server::Server;
 use crate::user::User;
+use crate::util::DecodeHybrid;
 
-fn mode_args(
+fn mode_args<'a>(
     modes: impl Iterator<Item = (char, bool)>,
-    args: impl IntoIterator<Item = String>,
-) -> impl Iterator<Item = (char, bool, Option<String>)> {
+    mut args: impl Iterator<Item = &'a Vec<u8>>,
+) -> impl Iterator<Item = (char, bool, Option<&'a Vec<u8>>)> {
     let mut out = Vec::new();
-    let mut args = args.into_iter();
 
     for (mode, remove) in modes {
         let arg = match mode {
@@ -34,7 +36,7 @@ fn mode_args(
 
 #[derive(Default)]
 pub struct TS6Handler {
-    uplink: Option<String>,
+    uplink: Option<[u8; 3]>,
 }
 
 impl TS6Handler {
@@ -44,19 +46,25 @@ impl TS6Handler {
 
     fn handle_line_none(&mut self, network: &mut Network, line: &Line) -> Outcome {
         match line.command.as_slice() {
-            b"PASS" => self.uplink = Some(line.args[3].to_string()),
+            b"PASS" => self.uplink = Some(line.args[3].as_slice().try_into().unwrap()),
             b"SERVER" => {
-                network.add_server(Server {
-                    sid: self.uplink.take().unwrap(),
-                    name: line.args[0].to_string(),
-                    description: line.args[2].to_string(),
-                    ..Server::default()
-                });
+                let sid = self.uplink.take().unwrap();
+                network.servers.insert(
+                    sid,
+                    Server {
+                        sid: sid.decode(),
+                        name: line.args[0].decode(),
+                        description: line.args[2].decode(),
+                        ..Server::default()
+                    },
+                );
             }
             b"PING" => {
                 return Outcome::Response(vec![format!(
                     ":{} PONG {} {}",
-                    network.me.sid, network.me.name, line.args[0]
+                    network.me.sid,
+                    network.me.name,
+                    line.args[0].decode(),
                 )]);
             }
             _ => {
@@ -69,18 +77,18 @@ impl TS6Handler {
 
     fn handle_line_encap(
         network: &mut Network,
-        _sid: &str,
-        _target: &str,
-        command: &str,
-        args: &[String],
+        _sid: [u8; 3],
+        _target: &[u8],
+        command: &[u8],
+        args: &[Vec<u8>],
     ) -> Outcome {
         match command {
             //:00A ENCAP * SU :420AAAABF
             //:00A ENCAP * SU 420AAAABF :jess
-            "SU" => {
-                let uid = &args[0];
-                let server = network.get_server_mut(&uid[..3]);
-                server.get_user_mut(uid).account = args.get(1).map(ToString::to_string);
+            b"SU" => {
+                let uid = args[0].as_slice();
+                let server = network.servers.get_mut(&uid[..3]).unwrap();
+                server.get_user_mut(uid).account = args.get(1).map(DecodeHybrid::decode);
             }
             _ => {
                 return Outcome::Unhandled;
@@ -89,44 +97,48 @@ impl TS6Handler {
         Outcome::Empty
     }
 
-    fn handle_line_sid(network: &mut Network, src_sid: &str, line: &Line) -> Outcome {
+    fn handle_line_sid(network: &mut Network, src_sid: [u8; 3], line: &Line) -> Outcome {
         match line.command.as_slice() {
             b"SID" => {
-                network.add_server(Server {
-                    sid: line.args[2].to_string(),
-                    name: line.args[0].to_string(),
-                    description: line.args[3].to_string(),
-                    ..Server::default()
-                });
+                let sid = line.args[2].clone().try_into().unwrap();
+                network.servers.insert(
+                    sid,
+                    Server {
+                        sid: sid.decode(),
+                        name: line.args[0].decode(),
+                        description: line.args[3].decode(),
+                        ..Server::default()
+                    },
+                );
             }
             b"SQUIT" => {
                 let sid = &line.args[0];
-                network.del_server(sid);
+                network.servers.remove(sid.as_slice());
             }
             //:420 EUID jess 1 1656880345 +QZaioswz a0Ob4s0oLV test. fd84:9d71:8b8:1::1 420AAAABD husky.vpn.lolnerd.net jess :big meow
             b"EUID" => {
-                let uid = line.args[7].to_string();
-                let nickname = line.args[0].to_string();
-                let username = line.args[4].to_string();
-                let realname = line.args[10].to_string();
-                let account = match line.args[9].as_str() {
-                    "*" => None,
-                    account => Some(account.to_string()),
+                let uid = line.args[7].clone();
+                let nickname = line.args[0].decode();
+                let username = line.args[4].decode();
+                let realname = line.args[10].decode();
+                let account = match line.args[9].as_slice() {
+                    b"*" => None,
+                    account => Some(account.decode()),
                 };
-                let ip = match line.args[6].as_str() {
-                    "0" => None,
-                    ip => Some(ip.to_string()),
+                let ip = match line.args[6].as_slice() {
+                    b"0" => None,
+                    ip => Some(ip.decode()),
                 };
-                let rdns = match line.args[8].as_str() {
-                    "*" => None,
-                    rdns => Some(rdns.to_string()),
+                let rdns = match line.args[8].as_slice() {
+                    b"*" => None,
+                    rdns => Some(rdns.decode()),
                 };
-                let host = line.args[5].to_string();
+                let host = line.args[5].decode();
 
-                let server = network.get_server_mut(src_sid);
+                let server = network.servers.get_mut(&src_sid).unwrap();
                 let mut user = User::new(nickname, username, realname, account, ip, rdns, host);
 
-                for (mode, _) in modes_from(&line.args[3]) {
+                for (mode, _) in modes_from(&line.args[3].decode()) {
                     user.modes.insert(mode);
                 }
 
@@ -136,19 +148,19 @@ impl TS6Handler {
             b"CHGHOST" => {
                 let uid = &line.args[0];
                 let sid = &uid[..3];
-                let server = network.get_server_mut(sid);
-                server.get_user_mut(uid).host = line.args[1].to_string();
+                let server = network.servers.get_mut(sid).unwrap();
+                server.get_user_mut(uid).host = line.args[1].decode();
             }
             b"SJOIN" => {
                 //:420 SJOIN 1640815917 #gaynet +MOPnst :@00AAAAAAC 420AAAABC
-                let name = line.args[1].to_string();
-                let _users = line.args[3].split(' ').map(ToOwned::to_owned);
+                let name = line.args[1].decode();
+                let _users = line.args[3].decode().split(' ');
                 let mut channel = Channel::new();
 
-                let modes = modes_from(&line.args[2]);
-                let args = line.args[3..].to_vec();
+                let modes = modes_from(&line.args[2].decode());
+                let args = line.args[3..].iter();
                 for (mode, _, arg) in mode_args(modes, args) {
-                    channel.modes.insert(mode, arg);
+                    channel.modes.insert(mode, arg.map(DecodeHybrid::decode));
                 }
 
                 network.add_channel(name, channel);
@@ -159,21 +171,21 @@ impl TS6Handler {
                     src_sid,
                     &line.args[0],
                     &line.args[1],
-                    &line.args[2..],
+                    line.args[2..].iter().as_slice(),
                 );
             }
             //:420 BAN K * test. 1656888029 31449600 31449600 jess!a0Ob4s0oLV@husky.vpn.lolnerd.net{jess} :moo
             b"BAN" => {
-                let btype = line.args[0].chars().next().unwrap();
+                let btype = line.args[0][0] as char;
                 let mask = match btype {
-                    'K' => format!("{}@{}", line.args[1], line.args[2]),
+                    'K' => format!("{}@{}", line.args[1].decode(), line.args[2].decode()),
                     // throw or something instead. only expecting K here
                     _ => "asd".to_string(),
                 };
-                let since = line.args[3].parse::<u64>().unwrap();
-                let duration = line.args[4].parse::<u64>().unwrap();
-                let setter = Oper::from(&line.args[6]);
-                let reason = line.args[7].to_string();
+                let since = line.args[3].decode().parse::<u64>().unwrap();
+                let duration = line.args[4].decode().parse::<u64>().unwrap();
+                let setter = Oper::from(&line.args[6].decode());
+                let reason = line.args[7].decode();
 
                 let bans = network.bans.entry(btype).or_insert_with(Default::default);
                 let ban = Ban::new(reason, since, duration, setter);
@@ -185,16 +197,16 @@ impl TS6Handler {
             }
             //:420 BMASK 1656966926 #test b :test!*@*
             b"BMASK" => {
-                let channel = network.get_channel_mut(&line.args[1]);
-                let mode = line.args[2].chars().next().unwrap();
-                let masks_new = line.args[3].split(' ').map(ToOwned::to_owned);
+                let channel = network.get_channel_mut(&line.args[1].decode());
+                let mode = line.args[2][0] as char;
+                let masks_new = line.args[3].split(|c| c == &b' ');
 
                 let masks = channel
                     .mode_lists
                     .entry(mode)
                     .or_insert_with(Default::default);
                 for mask in masks_new {
-                    masks.insert(mask);
+                    masks.insert(mask.decode());
                 }
             }
             _ => {
@@ -205,34 +217,34 @@ impl TS6Handler {
         Outcome::Empty
     }
 
-    fn handle_line_uid(network: &mut Network, src_uid: &str, line: &Line) -> Outcome {
+    fn handle_line_uid(network: &mut Network, src_uid: &[u8], line: &Line) -> Outcome {
         match line.command.as_slice() {
             //:420AAAABC QUIT :Quit: Reconnecting
             b"QUIT" => {
                 let sid = &src_uid[..3];
-                let server = network.get_server_mut(sid);
+                let server = network.servers.get_mut(sid).unwrap();
                 server.del_user(src_uid);
             }
             //:420AAAABC AWAY :afk
             b"AWAY" => {
                 let sid = &src_uid[..3];
-                let server = network.get_server_mut(sid);
-                server.get_user_mut(src_uid).away = line.args.first().map(ToString::to_string);
+                let server = network.servers.get_mut(sid).unwrap();
+                server.get_user_mut(src_uid).away = line.args.get(0).map(DecodeHybrid::decode);
             }
             //:420AAAABC OPER jess admin
             b"OPER" => {
                 let sid = &src_uid[..3];
-                let server = network.get_server_mut(sid);
-                server.get_user_mut(src_uid).oper = Some(line.args[0].to_string());
+                let server = network.servers.get_mut(sid).unwrap();
+                server.get_user_mut(src_uid).oper = Some(line.args[0].decode());
             }
             //:420AAAABG MODE 420AAAABG :+p-z
             b"MODE" => {
                 let uid = &line.args[0];
                 let sid = &uid[..3];
-                let server = network.get_server_mut(sid);
+                let server = network.servers.get_mut(sid).unwrap();
                 let user = server.get_user_mut(uid);
 
-                for (mode, remove) in modes_from(&line.args[1]) {
+                for (mode, remove) in modes_from(&line.args[1].decode()) {
                     if remove {
                         user.modes.remove(&mode);
                     } else {
@@ -248,14 +260,15 @@ impl TS6Handler {
             }
             //:420AAAABG TMODE 1656966926 #test -m+mi-i
             b"TMODE" => {
-                let channel = network.get_channel_mut(&line.args[1]);
-                let modes = modes_from(&line.args[2]);
+                let channel = network.get_channel_mut(&line.args[1].decode());
+                let modes = modes_from(&line.args[2].decode());
+                let args = line.args[3..].iter();
 
-                for (mode, remove, arg) in mode_args(modes, line.args[3..].to_vec()) {
+                for (mode, remove, arg) in mode_args(modes, args) {
                     if remove {
                         channel.modes.remove(&mode);
                     } else {
-                        channel.modes.insert(mode, arg);
+                        channel.modes.insert(mode, arg.map(DecodeHybrid::decode));
                     }
                 }
             }
@@ -291,11 +304,15 @@ impl Handler for TS6Handler {
         match &line.source {
             None => self.handle_line_none(network, line),
             // lines sourced from a server
-            Some(sid) if sid.len() == 3 => TS6Handler::handle_line_sid(network, sid, line),
-            // lines sourced from a user
-            Some(uid) if uid.len() == 9 => TS6Handler::handle_line_uid(network, uid, line),
-            // no idea mate
-            _ => Outcome::Unhandled,
+            Some(source) => {
+                if source.len() == 3 {
+                    let mut sid: [u8; 3] = [0; 3];
+                    sid.copy_from_slice(source);
+                    TS6Handler::handle_line_sid(network, sid, line)
+                } else {
+                    TS6Handler::handle_line_uid(network, source, line)
+                }
+            }
         }
     }
 }

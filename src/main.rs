@@ -55,7 +55,7 @@ impl<T: Handler> Haematite<T> {
         }
     }
 
-    pub fn handle(&mut self, line: &Line) -> Outcome {
+    pub fn handle(&mut self, line: Line) -> Result<Outcome, &'static str> {
         self.handler.handle(&mut self.network, line)
     }
 }
@@ -103,7 +103,7 @@ fn main() {
                 std::process::exit(2);
             }
         };
-        let handled = haematite.handle(&line);
+        let handled = haematite.handle(line).unwrap();
 
         let printable = from_utf8(&buffer).unwrap().to_string();
         let printable = match handled {

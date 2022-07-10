@@ -15,8 +15,8 @@ impl TryFrom<&str> for Oper {
 
         let hostmask = match oper_regex.captures(oper) {
             Some(hmatch) => {
-                let hostmask = hmatch.get(0).unwrap().as_str();
-                oper = hmatch.get(1).unwrap().as_str();
+                let hostmask = hmatch.get(1).unwrap().as_str();
+                oper = hmatch.get(2).unwrap().as_str();
                 Some(Hostmask::from(hostmask)?)
             }
             None => None,

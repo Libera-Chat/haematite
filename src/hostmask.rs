@@ -12,9 +12,9 @@ impl Hostmask {
         let regex = Regex::new(r"^([^!]+)!([^@]{1,10})@(\S+)$").unwrap();
         match regex.captures(hostmask) {
             Some(hostmask) => Ok(Self {
-                _nick: hostmask.get(0).unwrap().as_str().to_string(),
-                _user: hostmask.get(1).unwrap().as_str().to_string(),
-                _host: hostmask.get(2).unwrap().as_str().to_string(),
+                _nick: hostmask.get(1).unwrap().as_str().to_string(),
+                _user: hostmask.get(2).unwrap().as_str().to_string(),
+                _host: hostmask.get(3).unwrap().as_str().to_string(),
             }),
             None => Err("invalid hostmask"),
         }

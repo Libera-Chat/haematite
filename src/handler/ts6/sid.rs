@@ -8,19 +8,17 @@ use super::TS6Handler;
 
 impl TS6Handler {
     pub fn handle_sid(network: &mut Network, line: &Line) -> Result<Outcome, &'static str> {
-        let args: &[Vec<u8>; 4] = line
-            .args
+        if line.args.len() != 4 {
+            return Err("unexpected argument count");
+        }
+        let sid: [u8; 3] = line.args[2]
             .as_slice()
             .try_into()
-            .map_err(|_| "missing argument")?;
-        let sid: [u8; 3] = args[2]
-            .as_slice()
-            .try_into()
-            .map_err(|_| "missing argument")?;
+            .map_err(|_| "invalid sid")?;
 
         network.servers.insert(
             sid,
-            Server::new(sid.decode(), args[0].decode(), args[3].decode()),
+            Server::new(sid.decode(), line.args[0].decode(), line.args[3].decode()),
         );
 
         Ok(Outcome::Empty)

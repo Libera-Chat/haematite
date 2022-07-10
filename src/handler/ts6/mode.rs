@@ -8,19 +8,17 @@ use super::TS6Handler;
 
 impl TS6Handler {
     pub fn handle_mode(network: &mut Network, line: &Line) -> Result<Outcome, &'static str> {
-        let args: &[Vec<u8>; 2] = line
-            .args
-            .as_slice()
-            .try_into()
-            .map_err(|_| "missing arugment")?;
+        if line.args.len() != 2 {
+            return Err("unexpected argument count");
+        }
 
-        let uid: &[u8; 9] = args[0].as_slice().try_into().map_err(|_| "invalid uid")?;
-        let sid: &[u8; 3] = &uid[..3].try_into().unwrap();
+        let uid = line.args[0].as_slice();
+        let sid = &uid[..3];
 
         let server = network.servers.get_mut(sid).ok_or("unknown sid")?;
         let user = server.users.get_mut(uid).ok_or("unknown uid")?;
 
-        for (mode, remove) in modes_from(&args[1].decode()) {
+        for (mode, remove) in modes_from(&line.args[1].decode()) {
             if remove {
                 user.modes.remove(&mode);
             } else {

@@ -9,22 +9,20 @@ use super::TS6Handler;
 
 impl TS6Handler {
     pub fn handle_ban(network: &mut Network, line: &Line) -> Result<Outcome, &'static str> {
-        let args: &[Vec<u8>; 8] = line
-            .args
-            .as_slice()
-            .try_into()
-            .map_err(|_| "missing argument")?;
+        if line.args.len() != 8 {
+            return Err("unexpected argument count");
+        }
 
-        let btype = args[0][0] as char;
+        let btype = line.args[0][0] as char;
         let mask = match btype {
-            'K' => format!("{}@{}", args[1].decode(), args[2].decode()),
+            'K' => format!("{}@{}", line.args[1].decode(), line.args[2].decode()),
             // throw or something instead. only expecting K here
             _ => "asd".to_string(),
         };
-        let since = args[3].decode().parse::<u64>().unwrap();
-        let duration = args[4].decode().parse::<u64>().unwrap();
-        let setter = Oper::from(&args[6].decode());
-        let reason = args[7].decode();
+        let since = line.args[3].decode().parse::<u64>().unwrap();
+        let duration = line.args[4].decode().parse::<u64>().unwrap();
+        let setter = Oper::from(&line.args[6].decode());
+        let reason = line.args[7].decode();
 
         let bans = network.bans.entry(btype).or_insert_with(Default::default);
         let ban = Ban::new(reason, since, duration, setter);

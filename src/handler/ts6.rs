@@ -73,30 +73,20 @@ impl Handler for TS6Handler {
 
     fn handle(&mut self, network: &mut Network, line: Line) -> Result<Outcome, &'static str> {
         match line.command.as_slice() {
-            b"PASS" => self.handle_pass(network, &line),
-            b"SERVER" => self.handle_server(network, &line),
-            b"PING" => Self::handle_ping(network, &line),
-            b"SID" => Self::handle_sid(network, &line),
-            b"SQUIT" => Self::handle_squit(network, &line),
-            //:420 EUID jess 1 1656880345 +QZaioswz a0Ob4s0oLV test. fd84:9d71:8b8:1::1 420AAAABD husky.vpn.lolnerd.net jess :big meow
-            b"EUID" => Self::handle_euid(network, &line),
-            //:00A CHGHOST 420AAAABD husky.vpn.lolnerd.net
-            b"CHGHOST" => Self::handle_chghost(network, &line),
-            //:420 SJOIN 1640815917 #gaynet +MOPnst :@00AAAAAAC 420AAAABC
-            b"SJOIN" => Self::handle_sjoin(network, &line),
-            //:420 BAN K * test. 1656888029 31449600 31449600 jess!a0Ob4s0oLV@husky.vpn.lolnerd.net{jess} :moo
-            b"BAN" => Self::handle_ban(network, &line),
-            //:420 BMASK 1656966926 #test b :test!*@*
-            b"BMASK" => Self::handle_bmask(network, &line),
-            //:420AAAABC QUIT :Quit: Reconnecting
-            b"QUIT" => Self::handle_quit(network, &line),
-            //:420AAAABC AWAY :afk
             b"AWAY" => Self::handle_away(network, &line),
-            //:420AAAABC OPER jess admin
-            b"OPER" => Self::handle_oper(network, &line),
-            //:420AAAABG MODE 420AAAABG :+p-z
+            b"BAN" => Self::handle_ban(network, &line),
+            b"BMASK" => Self::handle_bmask(network, &line),
+            b"CHGHOST" => Self::handle_chghost(network, &line),
+            b"EUID" => Self::handle_euid(network, &line),
             b"MODE" => Self::handle_mode(network, &line),
-            //:420AAAABG TMODE 1656966926 #test -m+mi-i
+            b"OPER" => Self::handle_oper(network, &line),
+            b"PASS" => self.handle_pass(network, &line),
+            b"PING" => Self::handle_ping(network, &line),
+            b"QUIT" => Self::handle_quit(network, &line),
+            b"SERVER" => self.handle_server(network, &line),
+            b"SID" => Self::handle_sid(network, &line),
+            b"SJOIN" => Self::handle_sjoin(network, &line),
+            b"SQUIT" => Self::handle_squit(network, &line),
             b"TMODE" => Self::handle_tmode(network, &line),
             _ => Ok(Outcome::Unhandled),
         }

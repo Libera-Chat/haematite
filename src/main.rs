@@ -19,6 +19,7 @@ mod mode;
 mod network;
 mod oper;
 mod server;
+mod topic;
 mod user;
 mod util;
 

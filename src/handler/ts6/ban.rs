@@ -21,7 +21,7 @@ impl TS6Handler {
         };
         let since = line.args[3].decode().parse::<u64>().unwrap();
         let duration = line.args[4].decode().parse::<u64>().unwrap();
-        let setter = Oper::from(&line.args[6].decode());
+        let setter = Oper::try_from(line.args[6].decode().as_str())?;
         let reason = line.args[7].decode();
 
         let bans = network.bans.entry(btype).or_insert_with(Default::default);

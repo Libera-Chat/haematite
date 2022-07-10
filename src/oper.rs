@@ -7,21 +7,24 @@ pub struct Oper {
     _hostmask: Option<Hostmask>,
 }
 
-impl Oper {
-    pub fn from(mut oper: &str) -> Self {
-        let hostmask_regex = Regex::new(r"^([^{]+)\{(\S+)\}$").unwrap();
-        let hostmask = match hostmask_regex.captures(oper) {
+impl TryFrom<&str> for Oper {
+    type Error = &'static str;
+
+    fn try_from(mut oper: &str) -> Result<Self, Self::Error> {
+        let oper_regex = Regex::new(r"^([^{]+)\{(\S+)\}$").unwrap();
+
+        let hostmask = match oper_regex.captures(oper) {
             Some(hmatch) => {
                 let hostmask = hmatch.get(0).unwrap().as_str();
                 oper = hmatch.get(1).unwrap().as_str();
-                Hostmask::from(hostmask)
+                Some(Hostmask::from(hostmask)?)
             }
             None => None,
         };
 
-        Oper {
+        Ok(Oper {
             _name: oper.to_string(),
             _hostmask: hostmask,
-        }
+        })
     }
 }

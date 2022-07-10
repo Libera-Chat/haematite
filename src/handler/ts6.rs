@@ -12,6 +12,7 @@ mod server;
 mod sid;
 mod sjoin;
 mod squit;
+mod tb;
 mod tmode;
 
 use std::time::SystemTime;
@@ -88,6 +89,7 @@ impl Handler for TS6Handler {
             b"SJOIN" => Self::handle_sjoin(network, &line),
             b"SQUIT" => Self::handle_squit(network, &line),
             b"TMODE" => Self::handle_tmode(network, &line),
+            b"TB" => Self::handle_tb(network, &line),
             _ => Ok(Outcome::Unhandled),
         }
     }

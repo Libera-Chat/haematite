@@ -30,7 +30,7 @@ use std::str::from_utf8;
 use colored::{Color, Colorize};
 
 use crate::handler::ts6::TS6Handler;
-use crate::handler::{Handler, Outcome};
+use crate::handler::{Error, Handler, Outcome};
 use crate::line::Line;
 use crate::network::Network;
 use crate::server::Server;
@@ -57,7 +57,7 @@ impl<T: Handler> Haematite<T> {
         }
     }
 
-    pub fn handle(&mut self, line: Line) -> Result<Outcome, &'static str> {
+    pub fn handle(&mut self, line: Line) -> Result<Outcome, Error> {
         self.handler.handle(&mut self.network, line)
     }
 }
@@ -113,7 +113,7 @@ fn main() {
             Err(e) => {
                 eprintln!("failed to handle line");
                 eprintln!("  {}", DecodeHybrid::decode(&buffer));
-                eprintln!("  {}", e);
+                eprintln!("  {:?}", e);
                 std::process::exit(3);
             }
         };

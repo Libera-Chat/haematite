@@ -8,11 +8,11 @@ pub struct Topic {
 }
 
 impl Topic {
-    pub fn new(text: String, since: u32, setter: &str) -> Result<Self, &'static str> {
-        Ok(Self {
+    pub fn new(text: String, since: u32, setter: Hostmask) -> Self {
+        Self {
             text,
             since: NaiveDateTime::from_timestamp(i64::from(since), 0),
-            setter: Hostmask::from(setter)?,
-        })
+            setter,
+        }
     }
 }

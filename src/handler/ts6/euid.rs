@@ -1,4 +1,4 @@
-use crate::handler::Outcome;
+use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::mode::modes_from;
 use crate::network::Network;
@@ -8,9 +8,16 @@ use crate::util::DecodeHybrid as _;
 use super::TS6Handler;
 
 impl TS6Handler {
-    pub fn handle_euid(network: &mut Network, line: &Line) -> Result<Outcome, &'static str> {
-        let sid = line.source.as_ref().ok_or("missing source")?.as_slice();
-        let uid: [u8; 9] = line.args[7].clone().try_into().map_err(|_| "invalid uid")?;
+    pub fn handle_euid(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
+        if line.args.len() != 11 {
+            return Err(Error::ExpectedArguments(11));
+        }
+
+        let sid = line.source.as_ref().ok_or(Error::MissingSource)?.as_slice();
+        let uid: [u8; 9] = line.args[7]
+            .clone()
+            .try_into()
+            .map_err(|_| Error::BadArgument(7))?;
 
         let nickname = line.args[0].decode();
         let username = line.args[4].decode();

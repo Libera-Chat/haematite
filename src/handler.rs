@@ -9,11 +9,22 @@ pub enum Outcome {
     Response(Vec<String>),
 }
 
+#[derive(Debug)]
+pub enum Error {
+    MissingSource,
+    BadArgument(u8),
+    ExpectedArguments(u8),
+    UnknownServer,
+    UnknownChannel,
+    UnknownUser,
+    InvalidState,
+}
+
 pub trait Handler {
     fn get_burst<'a>(
         &self,
         network: &Network,
         password: &'a str,
     ) -> Result<Vec<String>, &'static str>;
-    fn handle(&mut self, network: &mut Network, line: Line) -> Result<Outcome, &'static str>;
+    fn handle(&mut self, network: &mut Network, line: Line) -> Result<Outcome, Error>;
 }

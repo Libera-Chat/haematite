@@ -1,5 +1,5 @@
 use crate::channel::Channel;
-use crate::handler::Outcome;
+use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::mode::modes_from;
 use crate::network::Network;
@@ -8,9 +8,9 @@ use crate::util::DecodeHybrid;
 use super::{parse_mode_args, TS6Handler};
 
 impl TS6Handler {
-    pub fn handle_sjoin(network: &mut Network, line: &Line) -> Result<Outcome, &'static str> {
+    pub fn handle_sjoin(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
         if line.args.len() < 4 {
-            return Err("unexpected argument count");
+            return Err(Error::ExpectedArguments(4));
         }
 
         let name = line.args[1].clone();

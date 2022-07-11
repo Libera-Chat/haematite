@@ -15,5 +15,5 @@ pub trait Handler {
         network: &Network,
         password: &'a str,
     ) -> Result<Vec<String>, &'static str>;
-    fn handle(&mut self, network: &mut Network, line: &Line) -> Outcome;
+    fn handle(&mut self, network: &mut Network, line: Line) -> Result<Outcome, &'static str>;
 }

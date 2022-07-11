@@ -19,6 +19,7 @@ mod mode;
 mod network;
 mod oper;
 mod server;
+mod topic;
 mod user;
 mod util;
 
@@ -33,6 +34,7 @@ use crate::handler::{Handler, Outcome};
 use crate::line::Line;
 use crate::network::Network;
 use crate::server::Server;
+use crate::util::DecodeHybrid;
 
 const PASSWORD: &str = "8m1RXdPW2HG8lakqJF53N6DYZRA6xRy0ORjIqod65RWok482rhgBQUfNTYcaJorJ";
 
@@ -55,7 +57,7 @@ impl<T: Handler> Haematite<T> {
         }
     }
 
-    pub fn handle(&mut self, line: &Line) -> Outcome {
+    pub fn handle(&mut self, line: Line) -> Result<Outcome, &'static str> {
         self.handler.handle(&mut self.network, line)
     }
 }
@@ -99,20 +101,31 @@ fn main() {
         let line = match Line::from(&buffer) {
             Ok(line) => line,
             Err(e) => {
-                eprintln!("failed to parse line: {:?}", e);
+                eprintln!("failed to parse line");
+                eprintln!("  {}", DecodeHybrid::decode(&buffer));
+                eprintln!("  {:?}", e);
                 std::process::exit(2);
             }
         };
-        let handled = haematite.handle(&line);
+
+        let outcome = match haematite.handle(line) {
+            Ok(outcome) => outcome,
+            Err(e) => {
+                eprintln!("failed to handle line");
+                eprintln!("  {}", DecodeHybrid::decode(&buffer));
+                eprintln!("  {}", e);
+                std::process::exit(3);
+            }
+        };
 
         let printable = from_utf8(&buffer).unwrap().to_string();
-        let printable = match handled {
+        let printable = match outcome {
             Outcome::Unhandled => printable.color(Color::Red),
             _ => printable.normal(),
         };
         println!("< {}", printable);
 
-        if let Outcome::Response(resps) = handled {
+        if let Outcome::Response(resps) = outcome {
             for resp in resps {
                 send(&socket, &resp);
             }

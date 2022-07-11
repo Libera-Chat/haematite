@@ -3,6 +3,7 @@ mod ban;
 mod bmask;
 mod chghost;
 mod euid;
+mod kill;
 mod mode;
 mod oper;
 mod pass;
@@ -60,13 +61,14 @@ impl Handler for TS6Handler {
         password: &'a str,
     ) -> Result<Vec<String>, &'static str> {
         let now = SystemTime::now();
+        let me = &network.servers[&network.me];
 
         Ok(vec![
-            format!("PASS {} TS 6 :{}", password, network.me.sid),
+            format!("PASS {} TS 6 :{}", password, me.sid),
             "CAPAB :BAN CHW CLUSTER ECHO ENCAP EOPMOD EUID EX IE KLN KNOCK MLOCK QS RSFNC SAVE SERVICES TB UNKLN".to_string(),
             format!(
                 "SERVER {} 1 :{}",
-                network.me.name, network.me.description
+                me.name, me.description
             ),
             format!("SVINFO 6 6 0 {}", now.duration_since(SystemTime::UNIX_EPOCH).map_err(|_e| "GRAN PROBLEMA DE TIEMPO")?.as_secs()),
         ])
@@ -79,6 +81,7 @@ impl Handler for TS6Handler {
             b"BMASK" => Self::handle_bmask(network, &line),
             b"CHGHOST" => Self::handle_chghost(network, &line),
             b"EUID" => Self::handle_euid(network, &line),
+            b"KILL" => Self::handle_kill(network, &line),
             b"MODE" => Self::handle_mode(network, &line),
             b"OPER" => Self::handle_oper(network, &line),
             b"PASS" => self.handle_pass(network, &line),

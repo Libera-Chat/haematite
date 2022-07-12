@@ -1,31 +1,18 @@
 use crate::channel::Membership;
-use crate::handler::Outcome;
+use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::network::Network;
-use crate::util::{NoneOr as _, TrueOr as _};
 
+use super::util::add_user_channel;
 use super::TS6Handler;
 
 impl TS6Handler {
     //:420AAAABG JOIN 1657651885 #test +
-    pub fn handle_join(network: &mut Network, line: &Line) -> Result<Outcome, &'static str> {
-        let uid = line.source.as_ref().ok_or("missing source")?;
-        let channel = line.args.get(1).ok_or("missing channel")?;
+    pub fn handle_join(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
+        let uid = line.source.as_ref().ok_or(Error::MissingSource)?;
+        let channel = line.args.get(1).ok_or(Error::ExpectedArguments(1))?;
 
-        let membership = Membership::new();
-
-        network
-            .user_channels
-            .get_mut(uid)
-            .ok_or("unknown uid")?
-            .insert(channel.clone(), membership)
-            .none_or("overwritten channel")?;
-        network
-            .channel_users
-            .get_mut(channel)
-            .ok_or("unknown channel")?
-            .insert(uid.clone())
-            .true_or("overwritten uid")?;
+        add_user_channel(network, uid.clone(), channel, Membership::new())?;
 
         Ok(Outcome::Empty)
     }

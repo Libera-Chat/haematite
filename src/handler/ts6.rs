@@ -18,10 +18,11 @@ mod squit;
 mod tb;
 mod tmode;
 mod topic;
+mod util;
 
 use std::time::SystemTime;
 
-use crate::handler::{Handler, Outcome};
+use crate::handler::{Error, Handler, Outcome};
 use crate::line::Line;
 use crate::network::Network;
 
@@ -77,7 +78,7 @@ impl Handler for TS6Handler {
         ])
     }
 
-    fn handle(&mut self, network: &mut Network, line: Line) -> Result<Outcome, &'static str> {
+    fn handle(&mut self, network: &mut Network, line: Line) -> Result<Outcome, Error> {
         match line.command.as_slice() {
             b"AWAY" => Self::handle_away(network, &line),
             b"BAN" => Self::handle_ban(network, &line),

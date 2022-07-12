@@ -22,6 +22,16 @@ pub struct Network {
     pub server_users: HashMap<Vec<u8>, HashSet<Vec<u8>>>,
 }
 
+pub enum Error {
+    UnknownUser,
+    UnknownChannel,
+    UnknownServer,
+
+    OverwrittenUser,
+    OverwrittenChannel,
+    OverwrittenServer,
+}
+
 impl Network {
     pub fn new(me: Server) -> Self {
         let sid = me.sid.as_bytes().to_vec();
@@ -31,5 +41,29 @@ impl Network {
         };
         network.servers.insert(sid, me);
         network
+    }
+
+    pub fn get_user(&self, name: &[u8]) -> Result<&User, Error> {
+        self.users.get(name).ok_or(Error::UnknownUser)
+    }
+
+    pub fn get_user_mut(&mut self, name: &[u8]) -> Result<&mut User, Error> {
+        self.users.get_mut(name).ok_or(Error::UnknownUser)
+    }
+
+    pub fn _get_channel(&self, name: &[u8]) -> Result<&Channel, Error> {
+        self.channels.get(name).ok_or(Error::UnknownChannel)
+    }
+
+    pub fn get_channel_mut(&mut self, name: &[u8]) -> Result<&mut Channel, Error> {
+        self.channels.get_mut(name).ok_or(Error::UnknownChannel)
+    }
+
+    pub fn _get_server(&self, name: &[u8]) -> Result<&Server, Error> {
+        self.servers.get(name).ok_or(Error::UnknownServer)
+    }
+
+    pub fn _get_server_mut(&mut self, name: &[u8]) -> Result<&mut Server, Error> {
+        self.servers.get_mut(name).ok_or(Error::UnknownServer)
     }
 }

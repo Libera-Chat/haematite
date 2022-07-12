@@ -1,4 +1,4 @@
-use crate::handler::Outcome;
+use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::network::Network;
 use crate::util::DecodeHybrid as _;
@@ -6,13 +6,13 @@ use crate::util::DecodeHybrid as _;
 use super::TS6Handler;
 
 impl TS6Handler {
-    pub fn handle_chghost(network: &mut Network, line: &Line) -> Result<Outcome, &'static str> {
+    pub fn handle_chghost(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
         if line.args.len() != 2 {
-            return Err("unexpected argument count");
+            return Err(Error::ExpectedArguments(2));
         }
 
-        let uid = line.args[0].as_slice();
-        let user = network.users.get_mut(uid).ok_or("unknown uid")?;
+        let uid = &line.args[0];
+        let user = network.get_user_mut(uid)?;
         user.host = line.args[1].decode();
 
         Ok(Outcome::Empty)

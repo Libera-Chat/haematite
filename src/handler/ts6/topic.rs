@@ -13,10 +13,8 @@ impl TS6Handler {
     //:420AAAABG TOPIC #test :hi
     pub fn handle_topic(network: &mut Network, line: &Line) -> Result<Outcome, &'static str> {
         let uid = line.source.as_ref().ok_or("missing source")?.as_slice();
-        let sid = &uid[..3];
 
-        let server = network.servers.get_mut(sid).ok_or("unknown sid")?;
-        let user = server.users.get_mut(uid).ok_or("unknown uid")?;
+        let user = network.users.get_mut(uid).ok_or("unknown uid")?;
         let channel = network
             .channels
             .get_mut(&line.args[0])

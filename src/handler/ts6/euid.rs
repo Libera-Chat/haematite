@@ -1,16 +1,18 @@
+use std::collections::HashMap;
+
 use crate::handler::Outcome;
 use crate::line::Line;
 use crate::mode::modes_from;
 use crate::network::Network;
 use crate::user::User;
-use crate::util::DecodeHybrid as _;
+use crate::util::{DecodeHybrid as _, NoneOr as _, TrueOr as _};
 
 use super::TS6Handler;
 
 impl TS6Handler {
     pub fn handle_euid(network: &mut Network, line: &Line) -> Result<Outcome, &'static str> {
-        let sid = line.source.as_ref().ok_or("missing source")?.as_slice();
-        let uid: [u8; 9] = line.args[7].clone().try_into().map_err(|_| "invalid uid")?;
+        let sid = line.source.as_ref().ok_or("missing source")?;
+        let uid = line.args[7].clone();
 
         let nickname = line.args[0].decode();
         let username = line.args[4].decode();
@@ -29,14 +31,32 @@ impl TS6Handler {
         };
         let host = line.args[5].decode();
 
-        let server = network.servers.get_mut(sid).unwrap();
         let mut user = User::new(nickname, username, realname, account, ip, rdns, host);
 
         for (mode, _) in modes_from(&line.args[3].decode()) {
             user.modes.insert(mode);
         }
 
-        server.users.insert(uid, user);
+        network
+            .users
+            .insert(uid.clone(), user)
+            .none_or("overwritten uid")?;
+
+        network
+            .user_channels
+            .insert(uid.clone(), HashMap::default())
+            .none_or("overwritten uid")?;
+
+        network
+            .user_server
+            .insert(uid.clone(), sid.clone())
+            .none_or("overwriten uid")?;
+        network
+            .server_users
+            .get_mut(sid)
+            .ok_or("unknown sid")?
+            .insert(uid)
+            .true_or("overwritten uid")?;
 
         Ok(Outcome::Empty)
     }

@@ -13,10 +13,7 @@ impl TS6Handler {
         }
 
         let uid = line.args[0].as_slice();
-        let sid = &uid[..3];
-
-        let server = network.servers.get_mut(sid).ok_or("unknown sid")?;
-        let user = server.users.get_mut(uid).ok_or("unknown uid")?;
+        let user = network.users.get_mut(uid).ok_or("unknown uid")?;
 
         for (mode, remove) in modes_from(&line.args[1].decode()) {
             if remove {

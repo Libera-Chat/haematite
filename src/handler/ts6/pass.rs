@@ -10,14 +10,7 @@ impl TS6Handler {
         _network: &mut Network,
         line: &Line,
     ) -> Result<Outcome, &'static str> {
-        self.uplink = Some(
-            line.args
-                .get(3)
-                .ok_or("missing argument")?
-                .as_slice()
-                .try_into()
-                .map_err(|_| "invalid sid")?,
-        );
+        self.uplink = Some(line.args.get(3).ok_or("missing argument")?.clone());
         Ok(Outcome::Empty)
     }
 }

@@ -1,9 +1,11 @@
-use crate::channel::Channel;
+use std::collections::HashSet;
+
+use crate::channel::{Channel, Membership};
 use crate::handler::Outcome;
 use crate::line::Line;
 use crate::mode::modes_from;
 use crate::network::Network;
-use crate::util::DecodeHybrid;
+use crate::util::{DecodeHybrid, NoneOr as _, TrueOr as _};
 
 use super::{parse_mode_args, TS6Handler};
 
@@ -13,8 +15,10 @@ impl TS6Handler {
             return Err("unexpected argument count");
         }
 
-        let name = line.args[1].clone();
-        let _users = line.args[line.args.len() - 1].decode().split(' ');
+        let channel_name = &line.args[1];
+        let uids = line.args[line.args.len() - 1]
+            .split(|c| c == &b' ')
+            .collect::<Vec<&[u8]>>();
 
         let mut channel = Channel::new();
 
@@ -24,7 +28,42 @@ impl TS6Handler {
             channel.modes.insert(mode, arg.map(DecodeHybrid::decode));
         }
 
-        network.channels.insert(name, channel);
+        network.channels.insert(channel_name.clone(), channel);
+        network
+            .channel_users
+            .insert(channel_name.clone(), HashSet::default())
+            .none_or("overwritten channel")?;
+
+        // unwrap shouldn't fail; we just added it
+        let channel_users = network.channel_users.get_mut(channel_name).unwrap();
+        for uid in uids {
+            //TODO: precompile
+            let statuses = HashSet::from(['+', '@']);
+
+            let mut uid = uid;
+
+            let mut membership = Membership::new();
+            while !uid.is_empty() && statuses.contains(&(uid[0] as char)) {
+                membership
+                    .status
+                    .insert(uid[0] as char)
+                    .true_or("overwritten status")?;
+                uid = &uid[1..];
+            }
+            if uid.is_empty() {
+                return Err("empty uid");
+            }
+
+            channel_users
+                .insert(uid.to_vec())
+                .true_or("overwritten uid")?;
+            network
+                .user_channels
+                .get_mut(uid)
+                .ok_or("unknown uid")?
+                .insert(channel_name.clone(), membership)
+                .none_or("overwritten channel")?;
+        }
 
         Ok(Outcome::Empty)
     }

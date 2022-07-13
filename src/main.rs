@@ -37,6 +37,8 @@ use crate::network::Network;
 use crate::server::Server;
 use crate::util::DecodeHybrid;
 
+use clap::Parser;
+
 fn send(mut socket: &TcpStream, data: &str) {
     println!("> {}", data);
     socket.write_all(data.as_bytes()).expect("asd");
@@ -61,18 +63,21 @@ impl<T: Handler> Haematite<T> {
     }
 }
 
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct CliArgs {
+    /// Path to config file
+    #[clap(index = 1)]
+    config: String,
+}
+
 fn main() {
     let mut args = std::env::args();
     args.next(); // skip the executable name
 
-    let arg = args.next();
+    let args = CliArgs::parse();
 
-    if arg == None {
-        eprintln!("syntax: haematite <config>");
-        std::process::exit(1);
-    }
-
-    let config = match config::Config::load_from_file(arg.unwrap()) {
+    let config = match config::Config::load_from_file(args.config) {
         Ok(it) => it,
         Err(err) => {
             eprintln!("failed to read config file: {}", err);

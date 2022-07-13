@@ -64,7 +64,7 @@ impl Config {
         if !self
             .server_name
             .chars()
-            .all(|c| c.is_ascii_alphabetic() || c == '.')
+            .all(|c| c.is_ascii_alphanumeric() || c == '.')
         {
             return Err(HMConfigError::InvalidServerName);
         }

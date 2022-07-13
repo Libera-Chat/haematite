@@ -68,7 +68,7 @@ impl<T: Handler> Haematite<T> {
 struct CliArgs {
     /// Path to config file
     #[clap(index = 1)]
-    config: String,
+    config: std::path::PathBuf,
 }
 
 fn main() {
@@ -92,11 +92,8 @@ fn main() {
         TS6Handler::new(),
     );
 
-    let socket = TcpStream::connect(format!(
-        "{}:{}",
-        config.uplink_remote_address, config.uplink_remote_port
-    ))
-    .expect("failed to connect");
+    let socket = TcpStream::connect((config.uplink_remote_address, config.uplink_remote_port))
+        .expect("failed to connect");
 
     match haematite
         .handler

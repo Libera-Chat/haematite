@@ -15,42 +15,42 @@ pub struct Config {
 }
 
 #[derive(Debug)]
-pub enum ConfigError {
+pub enum HMConfigError {
     InvalidSid,
     InvalidServerName,
     IoError(std::io::Error),
     YamlParseError(String),
 }
 
-impl From<std::io::Error> for ConfigError {
+impl From<std::io::Error> for HMConfigError {
     fn from(e: std::io::Error) -> Self {
         Self::IoError(e)
     }
 }
 
-impl std::fmt::Display for ConfigError {
+impl std::fmt::Display for HMConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         <Self as std::fmt::Debug>::fmt(self, f)
     }
 }
 
-impl std::error::Error for ConfigError {}
+impl std::error::Error for HMConfigError {}
 
 impl Config {
-    pub fn load_from_file(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
+    pub fn load_from_file(path: impl AsRef<Path>) -> Result<Self, HMConfigError> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
 
         let deserialized_config = match serde_yaml::from_reader::<BufReader<File>, Config>(reader) {
             Ok(it) => it,
             Err(err) => {
-                return Err(ConfigError::YamlParseError(err.to_string()));
+                return Err(HMConfigError::YamlParseError(err.to_string()));
             }
         };
-        return deserialized_config.validate();
+        deserialized_config.validate()
     }
 
-    fn validate(self) -> Result<Self, ConfigError> {
+    fn validate(self) -> Result<Self, HMConfigError> {
         let sid = self.sid.as_bytes();
 
         if sid.len() != 3
@@ -58,7 +58,7 @@ impl Config {
             || !(sid[1].is_ascii_uppercase() || sid[1].is_ascii_digit())
             || !(sid[2].is_ascii_uppercase() || sid[2].is_ascii_digit())
         {
-            return Err(ConfigError::InvalidSid);
+            return Err(HMConfigError::InvalidSid);
         }
 
         if !self
@@ -66,7 +66,7 @@ impl Config {
             .chars()
             .all(|c| c.is_ascii_alphabetic() || c == '.')
         {
-            return Err(ConfigError::InvalidServerName);
+            return Err(HMConfigError::InvalidServerName);
         }
 
         Ok(self)

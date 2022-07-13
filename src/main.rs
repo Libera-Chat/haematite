@@ -72,9 +72,6 @@ struct CliArgs {
 }
 
 fn main() {
-    let mut args = std::env::args();
-    args.next(); // skip the executable name
-
     let args = CliArgs::parse();
 
     let config = match config::Config::load_from_file(args.config) {

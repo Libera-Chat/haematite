@@ -12,6 +12,7 @@
 
 mod ban;
 mod channel;
+mod config;
 mod handler;
 mod hostmask;
 mod line;
@@ -36,7 +37,7 @@ use crate::network::Network;
 use crate::server::Server;
 use crate::util::DecodeHybrid;
 
-const PASSWORD: &str = "8m1RXdPW2HG8lakqJF53N6DYZRA6xRy0ORjIqod65RWok482rhgBQUfNTYcaJorJ";
+use clap::Parser;
 
 fn send(mut socket: &TcpStream, data: &str) {
     println!("> {}", data);
@@ -62,20 +63,42 @@ impl<T: Handler> Haematite<T> {
     }
 }
 
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct CliArgs {
+    /// Path to config file
+    #[clap(index = 1)]
+    config: std::path::PathBuf,
+}
+
 fn main() {
+    let args = CliArgs::parse();
+
+    let config = match config::Config::load_from_file(args.config) {
+        Ok(it) => it,
+        Err(err) => {
+            eprintln!("failed to read config file: {}", err);
+            std::process::exit(1);
+        }
+    };
+
     let mut haematite = Haematite::new(
         Server {
-            sid: "111".to_string(),
-            name: String::from("haematite.vpn.lolnerd.net"),
-            description: String::from("haematite psuedoserver"),
+            sid: config.sid,
+            name: config.server_name,
+            description: config.server_description,
             ..Server::default()
         },
         TS6Handler::new(),
     );
 
-    let socket = TcpStream::connect("husky.vpn.lolnerd.net:6667").expect("failed to connect");
+    let socket = TcpStream::connect((config.uplink_remote_address, config.uplink_remote_port))
+        .expect("failed to connect");
 
-    match haematite.handler.get_burst(&haematite.network, PASSWORD) {
+    match haematite
+        .handler
+        .get_burst(&haematite.network, &config.uplink_password)
+    {
         Err(burst_err) => {
             eprintln!("failed to make burst: {}", burst_err);
             std::process::exit(1);

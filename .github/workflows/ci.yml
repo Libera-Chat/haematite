@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Test
+    name: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,7 +27,7 @@ jobs:
         with:
           command: test
   clippy:
-    name: Clippy
+    name: lint (clippy)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -43,7 +43,7 @@ jobs:
         with:
           command: clippy
   rustfmt:
-    name: Rustfmt
+    name: format (rustfmt)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

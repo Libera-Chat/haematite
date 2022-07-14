@@ -30,6 +30,7 @@ use std::str::from_utf8;
 
 use colored::{Color, Colorize};
 
+use crate::config::Config;
 use crate::handler::ts6::TS6Handler;
 use crate::handler::{Error, Handler, Outcome};
 use crate::line::Line;
@@ -74,7 +75,7 @@ struct CliArgs {
 fn main() {
     let args = CliArgs::parse();
 
-    let config = match config::Config::load_from_file(args.config) {
+    let config = match Config::from_file(args.config) {
         Ok(it) => it,
         Err(err) => {
             eprintln!("failed to read config file: {}", err);
@@ -83,16 +84,20 @@ fn main() {
     };
 
     let mut haematite = Haematite::new(
-        Server::new(config.sid, config.server_name, config.server_description),
+        Server::new(
+            config.server.id,
+            config.server.name,
+            config.server.description,
+        ),
         TS6Handler::new(),
     );
 
-    let socket = TcpStream::connect((config.uplink_remote_address, config.uplink_remote_port))
-        .expect("failed to connect");
+    let socket =
+        TcpStream::connect((config.uplink.host, config.uplink.port)).expect("failed to connect");
 
     match haematite
         .handler
-        .get_burst(&haematite.network, &config.uplink_password)
+        .get_burst(&haematite.network, &config.uplink.password)
     {
         Err(burst_err) => {
             eprintln!("failed to make burst: {}", burst_err);

@@ -25,10 +25,11 @@ fn send(socket: &mut impl Write, data: &str) {
 /// # Errors
 ///
 /// Errors if data read from socket cannot be decoded.
-pub fn run(config: Config, network: &mut Network, mut handler: impl Handler) -> Result<(), Error> {
+pub fn run(config: &Config, network: &mut Network, mut handler: impl Handler) -> Result<(), Error> {
     let mut psocket = TcpStream::connect((config.uplink.host.clone(), config.uplink.port))
         .expect("failed to connect");
-    let mut connection = make_connection(&config.uplink.host, config.uplink.ca);
+    let mut connection =
+        make_connection(&config.uplink.host, &config.uplink.ca, &config.tls).unwrap();
     let mut socket = Stream::new(&mut connection, &mut psocket);
 
     let burst = handler

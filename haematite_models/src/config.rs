@@ -11,9 +11,16 @@ pub struct Uplink {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct Tls {
+    pub crt: PathBuf,
+    pub key: PathBuf,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct Config {
     pub server: Server,
     pub uplink: Uplink,
+    pub tls: Tls,
 }
 
 #[derive(Debug)]

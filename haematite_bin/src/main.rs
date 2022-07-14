@@ -66,5 +66,5 @@ fn main() {
 
     let mut network = Network::new(config.server.clone());
     let handler = TS6Handler::new();
-    s2s_run(config, &mut network, handler).unwrap();
+    s2s_run(&config, &mut network, handler).unwrap();
 }

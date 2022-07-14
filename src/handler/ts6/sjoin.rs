@@ -1,20 +1,23 @@
-use crate::channel::Channel;
-use crate::handler::Outcome;
+use std::collections::HashSet;
+
+use crate::channel::{Channel, Membership};
+use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::mode::modes_from;
 use crate::network::Network;
 use crate::util::DecodeHybrid;
 
+use super::util::{add_channel, add_user_channel};
 use super::{parse_mode_args, TS6Handler};
 
 impl TS6Handler {
-    pub fn handle_sjoin(network: &mut Network, line: &Line) -> Result<Outcome, &'static str> {
-        if line.args.len() < 4 {
-            return Err("unexpected argument count");
-        }
+    pub fn handle_sjoin(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
+        Error::assert_arg_count(line, 4)?;
 
-        let name = line.args[1].clone();
-        let _users = line.args[line.args.len() - 1].decode().split(' ');
+        let channel_name = &line.args[1];
+        let uids = line.args[line.args.len() - 1]
+            .split(|c| c == &b' ')
+            .collect::<Vec<&[u8]>>();
 
         let mut channel = Channel::new();
 
@@ -24,7 +27,25 @@ impl TS6Handler {
             channel.modes.insert(mode, arg.map(DecodeHybrid::decode));
         }
 
-        network.channels.insert(name, channel);
+        add_channel(network, channel_name.clone(), channel)?;
+
+        for uid in uids {
+            //TODO: precompile
+            let statuses = HashSet::from(['+', '@']);
+
+            let mut uid = uid;
+
+            let mut membership = Membership::new();
+            while !uid.is_empty() && statuses.contains(&(uid[0] as char)) {
+                membership.status.insert(uid[0] as char);
+                uid = &uid[1..];
+            }
+            if uid.is_empty() {
+                return Err(Error::BadArgument);
+            }
+
+            add_user_channel(network, uid.to_vec(), channel_name, membership)?;
+        }
 
         Ok(Outcome::Empty)
     }

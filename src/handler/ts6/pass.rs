@@ -1,23 +1,14 @@
-use crate::handler::Outcome;
+use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::network::Network;
 
 use super::TS6Handler;
 
 impl TS6Handler {
-    pub fn handle_pass(
-        &mut self,
-        _network: &mut Network,
-        line: &Line,
-    ) -> Result<Outcome, &'static str> {
-        self.uplink = Some(
-            line.args
-                .get(3)
-                .ok_or("missing argument")?
-                .as_slice()
-                .try_into()
-                .map_err(|_| "invalid sid")?,
-        );
+    pub fn handle_pass(&mut self, _network: &mut Network, line: &Line) -> Result<Outcome, Error> {
+        Error::assert_arg_count(line, 4)?;
+
+        self.uplink = Some(line.args[3].clone());
         Ok(Outcome::Empty)
     }
 }

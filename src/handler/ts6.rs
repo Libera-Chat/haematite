@@ -3,9 +3,11 @@ mod ban;
 mod bmask;
 mod chghost;
 mod euid;
+mod join;
 mod kill;
 mod mode;
 mod oper;
+mod part;
 mod pass;
 mod ping;
 mod quit;
@@ -16,10 +18,11 @@ mod squit;
 mod tb;
 mod tmode;
 mod topic;
+mod util;
 
 use std::time::SystemTime;
 
-use crate::handler::{Handler, Outcome};
+use crate::handler::{Error, Handler, Outcome};
 use crate::line::Line;
 use crate::network::Network;
 
@@ -46,7 +49,7 @@ fn parse_mode_args<'a>(
 
 #[derive(Default)]
 pub struct TS6Handler {
-    uplink: Option<[u8; 3]>,
+    uplink: Option<Vec<u8>>,
 }
 
 impl TS6Handler {
@@ -75,16 +78,18 @@ impl Handler for TS6Handler {
         ])
     }
 
-    fn handle(&mut self, network: &mut Network, line: Line) -> Result<Outcome, &'static str> {
+    fn handle(&mut self, network: &mut Network, line: Line) -> Result<Outcome, Error> {
         match line.command.as_slice() {
             b"AWAY" => Self::handle_away(network, &line),
             b"BAN" => Self::handle_ban(network, &line),
             b"BMASK" => Self::handle_bmask(network, &line),
             b"CHGHOST" => Self::handle_chghost(network, &line),
             b"EUID" => Self::handle_euid(network, &line),
+            b"JOIN" => Self::handle_join(network, &line),
             b"KILL" => Self::handle_kill(network, &line),
             b"MODE" => Self::handle_mode(network, &line),
             b"OPER" => Self::handle_oper(network, &line),
+            b"PART" => Self::handle_part(network, &line),
             b"PASS" => self.handle_pass(network, &line),
             b"PING" => Self::handle_ping(network, &line),
             b"QUIT" => Self::handle_quit(network, &line),

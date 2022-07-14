@@ -1,6 +1,6 @@
 use crate::topic::Topic;
 use linked_hash_set::LinkedHashSet;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]
 pub struct Channel {
@@ -9,7 +9,18 @@ pub struct Channel {
     pub mode_lists: HashMap<char, LinkedHashSet<String>>,
 }
 
+#[derive(Default)]
+pub struct Membership {
+    pub status: HashSet<char>,
+}
+
 impl Channel {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Membership {
     pub fn new() -> Self {
         Self::default()
     }

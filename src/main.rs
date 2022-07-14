@@ -83,11 +83,7 @@ fn main() {
     };
 
     let mut haematite = Haematite::new(
-        Server::new(
-            config.sid,
-            config.server_name,
-            config.server_description,
-        ),
+        Server::new(config.sid, config.server_name, config.server_description),
         TS6Handler::new(),
     );
 

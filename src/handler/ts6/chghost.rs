@@ -7,9 +7,7 @@ use super::TS6Handler;
 
 impl TS6Handler {
     pub fn handle_chghost(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
-        if line.args.len() != 2 {
-            return Err(Error::ExpectedArguments(2));
-        }
+        Error::assert_arg_count(line, 2)?;
 
         let uid = &line.args[0];
         let user = network.get_user_mut(uid)?;

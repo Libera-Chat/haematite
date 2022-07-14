@@ -9,8 +9,10 @@ use super::TS6Handler;
 impl TS6Handler {
     //:420AAAABG JOIN 1657651885 #test +
     pub fn handle_join(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
+        Error::assert_arg_count(line, 2)?;
+
         let uid = line.source.as_ref().ok_or(Error::MissingSource)?;
-        let channel = line.args.get(1).ok_or(Error::ExpectedArguments(1))?;
+        let channel = &line.args[1];
 
         add_user_channel(network, uid.clone(), channel, Membership::new())?;
 

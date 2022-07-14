@@ -12,9 +12,7 @@ use super::{parse_mode_args, TS6Handler};
 
 impl TS6Handler {
     pub fn handle_sjoin(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
-        if line.args.len() < 4 {
-            return Err(Error::ExpectedArguments(4));
-        }
+        Error::assert_arg_count(line, 4)?;
 
         let channel_name = &line.args[1];
         let uids = line.args[line.args.len() - 1]

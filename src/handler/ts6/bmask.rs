@@ -7,9 +7,7 @@ use super::TS6Handler;
 
 impl TS6Handler {
     pub fn handle_bmask(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
-        if line.args.len() != 4 {
-            return Err(Error::ExpectedArguments(4));
-        }
+        Error::assert_arg_count(line, 4)?;
 
         let channel = network.get_channel_mut(&line.args[1])?;
         let mode = line.args[2][0] as char;

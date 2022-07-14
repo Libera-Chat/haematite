@@ -8,9 +8,7 @@ use super::{parse_mode_args, TS6Handler};
 
 impl TS6Handler {
     pub fn handle_tmode(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
-        if line.args.len() < 3 {
-            return Err(Error::ExpectedArguments(3));
-        }
+        Error::assert_arg_count(line, 3)?;
 
         let channel = network.get_channel_mut(&line.args[1])?;
         let modes = modes_from(&line.args[2].decode());

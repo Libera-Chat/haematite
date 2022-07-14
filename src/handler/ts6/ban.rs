@@ -31,9 +31,7 @@ fn parse_oper(mut oper: &str) -> Result<Oper, HostmaskError> {
 
 impl TS6Handler {
     pub fn handle_ban(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
-        if line.args.len() != 8 {
-            return Err(Error::ExpectedArguments(8));
-        }
+        Error::assert_arg_count(line, 8)?;
 
         let btype = line.args[0][0] as char;
         let mask = match btype {

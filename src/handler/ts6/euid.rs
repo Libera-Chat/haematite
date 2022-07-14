@@ -10,6 +10,8 @@ use super::TS6Handler;
 
 impl TS6Handler {
     pub fn handle_euid(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
+        Error::assert_arg_count(line, 11)?;
+
         let sid = line.source.as_ref().ok_or(Error::MissingSource)?.clone();
         let uid = line.args[7].clone();
 

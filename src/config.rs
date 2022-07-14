@@ -1,74 +1,57 @@
-use serde::{Deserialize, Serialize};
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Error as IoError};
 use std::path::Path;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct Config {
-    pub server_name: String,
-    pub sid: String,
-    pub server_description: String,
+use serde::{Deserialize, Serialize};
+use serde_yaml::from_reader;
 
-    pub uplink_remote_address: String,
-    pub uplink_remote_port: u16,
-    pub uplink_password: String,
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Server {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Uplink {
+    pub host: String,
+    pub port: u16,
+    pub password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Config {
+    pub server: Server,
+    pub uplink: Uplink,
 }
 
 #[derive(Debug)]
-pub enum HMConfigError {
-    InvalidSid,
-    InvalidServerName,
-    IoError(std::io::Error),
-    YamlParseError(String),
+pub enum Error {
+    Io(std::io::Error),
+    InvalidYaml(String),
+    InvalidData(String),
 }
 
-impl From<std::io::Error> for HMConfigError {
-    fn from(e: std::io::Error) -> Self {
-        Self::IoError(e)
+impl From<IoError> for Error {
+    fn from(e: IoError) -> Self {
+        Self::Io(e)
     }
 }
 
-impl std::fmt::Display for HMConfigError {
+impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         <Self as std::fmt::Debug>::fmt(self, f)
     }
 }
 
-impl std::error::Error for HMConfigError {}
+impl std::error::Error for Error {}
 
 impl Config {
-    pub fn load_from_file(path: impl AsRef<Path>) -> Result<Self, HMConfigError> {
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Self, Error> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
 
-        let deserialized_config = match serde_yaml::from_reader::<BufReader<File>, Config>(reader) {
-            Ok(it) => it,
-            Err(err) => {
-                return Err(HMConfigError::YamlParseError(err.to_string()));
-            }
-        };
-        deserialized_config.validate()
-    }
-
-    fn validate(self) -> Result<Self, HMConfigError> {
-        let sid = self.sid.as_bytes();
-
-        if sid.len() != 3
-            || !sid[0].is_ascii_digit()
-            || !(sid[1].is_ascii_uppercase() || sid[1].is_ascii_digit())
-            || !(sid[2].is_ascii_uppercase() || sid[2].is_ascii_digit())
-        {
-            return Err(HMConfigError::InvalidSid);
-        }
-
-        if !self
-            .server_name
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '.')
-        {
-            return Err(HMConfigError::InvalidServerName);
-        }
-
-        Ok(self)
+        from_reader::<BufReader<File>, Config>(reader)
+            .map_err(|e| Error::InvalidYaml(e.to_string()))
     }
 }

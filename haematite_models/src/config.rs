@@ -1,14 +1,16 @@
 use crate::server::Server;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use std::path::PathBuf;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct Uplink {
     pub host: String,
     pub port: u16,
     pub password: String,
+    pub ca: PathBuf,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Config {
     pub server: Server,
     pub uplink: Uplink,

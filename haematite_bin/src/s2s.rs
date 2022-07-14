@@ -6,6 +6,9 @@ use haematite_models::config::Config;
 use haematite_models::network::Network;
 use haematite_s2s::handler::{Error as HandlerError, Handler, Outcome};
 use haematite_s2s::DecodeHybrid;
+use rustls::Stream;
+
+use crate::tls::make_connection;
 
 #[derive(Debug)]
 pub enum Error {
@@ -13,7 +16,7 @@ pub enum Error {
     HandleLine(String, HandlerError),
 }
 
-fn send(mut socket: &TcpStream, data: &str) {
+fn send(socket: &mut impl Write, data: &str) {
     println!("> {}", data);
     socket.write_all(data.as_bytes()).expect("asd");
     socket.write_all(b"\r\n").expect("asd");
@@ -23,17 +26,19 @@ fn send(mut socket: &TcpStream, data: &str) {
 ///
 /// Errors if data read from socket cannot be decoded.
 pub fn run(config: Config, network: &mut Network, mut handler: impl Handler) -> Result<(), Error> {
-    let socket =
-        TcpStream::connect((config.uplink.host, config.uplink.port)).expect("failed to connect");
+    let mut psocket = TcpStream::connect((config.uplink.host.clone(), config.uplink.port))
+        .expect("failed to connect");
+    let mut connection = make_connection(&config.uplink.host, config.uplink.ca);
+    let mut socket = Stream::new(&mut connection, &mut psocket);
 
     let burst = handler
         .get_burst(network, &config.uplink.password)
         .map_err(Error::MakeBurst)?;
     for line in burst {
-        send(&socket, &line);
+        send(&mut socket, &line);
     }
 
-    let mut reader = BufReader::with_capacity(512, &socket);
+    let mut reader = BufReader::with_capacity(512, socket);
     let mut buffer = Vec::<u8>::with_capacity(512);
     while let Ok(len) = reader.read_until(b'\n', &mut buffer) {
         // chop off \r\n
@@ -51,7 +56,7 @@ pub fn run(config: Config, network: &mut Network, mut handler: impl Handler) -> 
 
         if let Outcome::Response(resps) = outcome {
             for resp in resps {
-                send(&socket, &resp);
+                send(reader.get_mut(), &resp);
             }
         }
 

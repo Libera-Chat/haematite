@@ -11,4 +11,6 @@ haematite_models = { path = "../haematite_models" }
 
 clap = { version = "3.2.10", features = ["derive"] }
 colored = "2.0.0"
+rustls = "0.20.6"
+rustls-pemfile = "1.0.0"
 serde_yaml = "0.8.25"

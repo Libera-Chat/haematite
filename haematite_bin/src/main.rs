@@ -12,6 +12,7 @@
 #![allow(clippy::similar_names)]
 
 mod s2s;
+mod tls;
 
 use std::fs::File;
 use std::io::{BufReader, Error as IoError};

@@ -2,6 +2,7 @@ pub mod ts6;
 
 use std::ops::RangeFrom;
 
+use crate::config::{Config, Error as ConfigError};
 use crate::line::Line;
 use crate::network::{Error as StateError, Network};
 
@@ -21,11 +22,14 @@ pub enum Error {
 }
 
 pub trait Handler {
+    fn validate_config(&self, config: &Config) -> Result<(), ConfigError>;
+
     fn get_burst<'a>(
         &self,
         network: &Network,
         password: &'a str,
     ) -> Result<Vec<String>, &'static str>;
+
     fn handle(&mut self, network: &mut Network, line: Line) -> Result<Outcome, Error>;
 }
 

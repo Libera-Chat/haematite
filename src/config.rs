@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Error as IoError};
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -27,13 +27,14 @@ pub struct Config {
 
 #[derive(Debug)]
 pub enum Error {
-    IoError(std::io::Error),
-    YamlParseError(String),
+    Io(std::io::Error),
+    InvalidYaml(String),
+    InvalidData(String),
 }
 
-impl From<std::io::Error> for Error {
-    fn from(e: std::io::Error) -> Self {
-        Self::IoError(e)
+impl From<IoError> for Error {
+    fn from(e: IoError) -> Self {
+        Self::Io(e)
     }
 }
 
@@ -51,6 +52,6 @@ impl Config {
         let reader = BufReader::new(file);
 
         from_reader::<BufReader<File>, Config>(reader)
-            .map_err(|e| Error::YamlParseError(e.to_string()))
+            .map_err(|e| Error::InvalidYaml(e.to_string()))
     }
 }

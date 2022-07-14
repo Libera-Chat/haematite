@@ -22,6 +22,9 @@ mod util;
 
 use std::time::SystemTime;
 
+use regex::Regex;
+
+use crate::config::{Config, Error as ConfigError};
 use crate::handler::{Error, Handler, Outcome};
 use crate::line::Line;
 use crate::network::Network;
@@ -54,11 +57,25 @@ pub struct TS6Handler {
 
 impl TS6Handler {
     pub fn new() -> Self {
-        Self::default()
+        TS6Handler::default()
     }
 }
 
 impl Handler for TS6Handler {
+    fn validate_config(&self, config: &Config) -> Result<(), ConfigError> {
+        //TODO: precompile
+        let regex_sid = Regex::new(r"^[0-9][0-9A-Z]{2}$").unwrap();
+        let regex_name = Regex::new(r"^[0-9a-zA-Z]+\.[0-9a-zA-Z\.]*$").unwrap();
+
+        if !regex_sid.is_match(&config.server.id) {
+            Err(ConfigError::InvalidData("server id".to_string()))
+        } else if !regex_name.is_match(&config.server.name) {
+            Err(ConfigError::InvalidData("server name".to_string()))
+        } else {
+            Ok(())
+        }
+    }
+
     fn get_burst<'a>(
         &self,
         network: &Network,

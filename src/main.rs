@@ -83,13 +83,16 @@ fn main() {
         }
     };
 
+    let handler = TS6Handler::new();
+    handler.validate_config(&config).expect("invalid config");
+
     let mut haematite = Haematite::new(
         Server::new(
             config.server.id,
             config.server.name,
             config.server.description,
         ),
-        TS6Handler::new(),
+        handler,
     );
 
     let socket =

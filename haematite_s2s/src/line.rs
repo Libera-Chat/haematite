@@ -1,9 +1,9 @@
-use std::collections::VecDeque;
-
-use crate::util::TakeWord as _;
+use std::ops::RangeFrom;
 
 #[derive(Debug)]
-pub enum ParseError {
+pub enum Error {
+    ExcessArguments(usize, u8),
+    InsufficientArguments(usize, u8),
     MissingCommand,
 }
 
@@ -14,31 +14,40 @@ pub struct Line {
     pub args: Vec<Vec<u8>>,
 }
 
-impl Line {
-    pub fn from(mut line: &[u8]) -> Result<Self, ParseError> {
-        let source = match line.get(0) {
-            Some(b':') => Some(line.take_word()[1..].to_vec()),
-            _ => None,
-        };
+pub struct ArgRange {
+    minimum: u8,
+    maximum: u8,
+}
 
-        let mut args: VecDeque<Vec<u8>> = VecDeque::new();
-        loop {
-            let arg = match line.get(0) {
-                Some(b':') => {
-                    let arg = &line[1..];
-                    line = &line[line.len()..];
-                    arg
-                }
-                Some(_) => line.take_word(),
-                None => break,
-            };
-            args.push_back(arg.to_vec());
+impl From<u8> for ArgRange {
+    fn from(other: u8) -> Self {
+        Self {
+            minimum: other,
+            maximum: other,
         }
+    }
+}
 
-        Ok(Line {
-            source,
-            command: args.pop_front().ok_or(ParseError::MissingCommand)?,
-            args: args.into(),
-        })
+impl From<RangeFrom<u8>> for ArgRange {
+    fn from(other: RangeFrom<u8>) -> Self {
+        Self {
+            minimum: other.start,
+            maximum: u8::MAX,
+        }
+    }
+}
+
+impl Line {
+    pub fn assert_arg_count(&self, expected: impl Into<ArgRange>) -> Result<(), Error> {
+        let actual = self.args.len();
+        let expected: ArgRange = expected.into();
+
+        if actual < expected.minimum.into() {
+            Err(Error::InsufficientArguments(actual, expected.minimum))
+        } else if actual > expected.maximum.into() {
+            Err(Error::ExcessArguments(actual, expected.maximum))
+        } else {
+            Ok(())
+        }
     }
 }

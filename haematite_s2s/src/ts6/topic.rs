@@ -13,7 +13,7 @@ use super::TS6Handler;
 impl TS6Handler {
     //:420AAAABG TOPIC #test :hi
     pub fn handle_topic(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
-        Error::assert_arg_count(line, 2)?;
+        Line::assert_arg_count(line, 2)?;
 
         let uid = line.source.as_ref().ok_or(Error::MissingSource)?;
 

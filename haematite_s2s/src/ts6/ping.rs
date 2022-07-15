@@ -8,7 +8,7 @@ use super::TS6Handler;
 
 impl TS6Handler {
     pub fn handle_ping(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
-        Error::assert_arg_count(line, 1..)?;
+        Line::assert_arg_count(line, 1..)?;
 
         let source = line
             .source

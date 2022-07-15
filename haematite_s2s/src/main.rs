@@ -14,6 +14,8 @@ mod config;
 mod handler;
 mod line;
 mod mode;
+mod rfc1459;
+mod ts6;
 mod util;
 
 use std::io::{BufRead, BufReader, Write};
@@ -22,12 +24,10 @@ use std::str::from_utf8;
 
 use colored::{Color, Colorize};
 use haematite_models::network::Network;
-use haematite_models::server::Server;
 
 use crate::config::Config;
-use crate::handler::ts6::TS6Handler;
-use crate::handler::{Error, Handler, Outcome};
-use crate::line::Line;
+use crate::handler::{Handler, Outcome};
+use crate::ts6::TS6Handler;
 use crate::util::DecodeHybrid;
 
 use clap::Parser;
@@ -38,24 +38,6 @@ fn send(mut socket: &TcpStream, data: &str) {
     socket.write_all(b"\r\n").expect("asd");
 }
 
-struct Haematite<T: Handler> {
-    network: Network,
-    handler: T,
-}
-
-impl<T: Handler> Haematite<T> {
-    fn new(me: Server, handler: T) -> Self {
-        Haematite {
-            network: Network::new(me),
-            handler,
-        }
-    }
-
-    pub fn handle(&mut self, line: Line) -> Result<Outcome, Error> {
-        self.handler.handle(&mut self.network, line)
-    }
-}
-
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct CliArgs {
@@ -64,29 +46,14 @@ struct CliArgs {
     config: std::path::PathBuf,
 }
 
-fn main() {
-    let args = CliArgs::parse();
-
-    let config = match Config::from_file(args.config) {
-        Ok(it) => it,
-        Err(err) => {
-            eprintln!("failed to read config file: {}", err);
-            std::process::exit(1);
-        }
-    };
-
-    let handler = TS6Handler::new();
+fn main_inner(config: Config, network: &mut Network) {
+    let mut handler = TS6Handler::new();
     handler.validate_config(&config).expect("invalid config");
-
-    let mut haematite = Haematite::new(config.server.clone(), handler);
 
     let socket =
         TcpStream::connect((config.uplink.host, config.uplink.port)).expect("failed to connect");
 
-    match haematite
-        .handler
-        .get_burst(&haematite.network, &config.uplink.password)
-    {
+    match handler.get_burst(network, &config.uplink.password) {
         Err(burst_err) => {
             eprintln!("failed to make burst: {}", burst_err);
             std::process::exit(1);
@@ -109,17 +76,7 @@ fn main() {
         // chop off \r\n
         buffer.drain(len - 2..len);
 
-        let line = match Line::from(&buffer) {
-            Ok(line) => line,
-            Err(e) => {
-                eprintln!("failed to parse line");
-                eprintln!("  {}", DecodeHybrid::decode(&buffer));
-                eprintln!("  {:?}", e);
-                std::process::exit(2);
-            }
-        };
-
-        let outcome = match haematite.handle(line) {
+        let outcome = match handler.handle(network, &buffer) {
             Ok(outcome) => outcome,
             Err(e) => {
                 eprintln!("failed to handle line");
@@ -144,4 +101,19 @@ fn main() {
 
         buffer.clear();
     }
+}
+
+fn main() {
+    let args = CliArgs::parse();
+
+    let config = match Config::from_file(args.config) {
+        Ok(it) => it,
+        Err(err) => {
+            eprintln!("failed to read config file: {}", err);
+            std::process::exit(1);
+        }
+    };
+
+    let mut network = Network::new(config.server.clone());
+    main_inner(config, &mut network);
 }

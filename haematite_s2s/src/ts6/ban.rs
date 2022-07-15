@@ -34,7 +34,7 @@ fn parse_oper(mut oper: &str) -> Result<Oper, HostmaskError> {
 
 impl TS6Handler {
     pub fn handle_ban(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
-        Error::assert_arg_count(line, 8)?;
+        Line::assert_arg_count(line, 8)?;
 
         let btype = line.args[0][0] as char;
         let mask = match btype {
@@ -44,17 +44,22 @@ impl TS6Handler {
         };
         let since = line.args[3].decode();
         let duration = line.args[4].decode();
-        let setter = parse_oper(line.args[6].decode().as_str()).map_err(|_| Error::BadArgument)?;
+        let setter =
+            parse_oper(line.args[6].decode().as_str()).map_err(|_| Error::InvalidArgument)?;
         let reason = line.args[7].decode();
 
         let bans = network.bans.entry(btype).or_insert_with(Default::default);
         let ban = Ban {
             reason,
             since: NaiveDateTime::from_timestamp(
-                since.parse::<i64>().map_err(|_| Error::BadArgument)?,
+                since.parse::<i64>().map_err(|_| Error::InvalidArgument)?,
                 0,
             ),
-            duration: Duration::from_secs(duration.parse::<u64>().map_err(|_| Error::BadArgument)?),
+            duration: Duration::from_secs(
+                duration
+                    .parse::<u64>()
+                    .map_err(|_| Error::InvalidArgument)?,
+            ),
             setter,
         };
 

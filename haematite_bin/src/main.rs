@@ -12,6 +12,7 @@
 #![allow(clippy::similar_names)]
 
 mod s2s;
+mod tls;
 
 use std::fs::File;
 use std::io::{BufReader, Error as IoError};
@@ -65,5 +66,5 @@ fn main() {
 
     let mut network = Network::new(config.server.clone());
     let handler = TS6Handler::new();
-    s2s_run(config, &mut network, handler).unwrap();
+    s2s_run(&config, &mut network, handler).unwrap();
 }

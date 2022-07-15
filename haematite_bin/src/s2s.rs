@@ -1,4 +1,4 @@
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Error as IoError, Write};
 use std::net::TcpStream;
 
 use colored::{Color, Colorize};
@@ -8,10 +8,12 @@ use haematite_s2s::handler::{Error as HandlerError, Handler, Outcome};
 use haematite_s2s::DecodeHybrid;
 use rustls::Stream;
 
-use crate::tls::make_connection;
+use crate::tls::{make_connection, Error as TlsError};
 
 #[derive(Debug)]
 pub enum Error {
+    SocketFailed(IoError),
+    TlsFailed(TlsError),
     MakeBurst(String),
     HandleLine(String, HandlerError),
 }
@@ -27,9 +29,9 @@ fn send(socket: &mut impl Write, data: &str) {
 /// Errors if data read from socket cannot be decoded.
 pub fn run(config: &Config, network: &mut Network, mut handler: impl Handler) -> Result<(), Error> {
     let mut psocket = TcpStream::connect((config.uplink.host.clone(), config.uplink.port))
-        .expect("failed to connect");
-    let mut connection =
-        make_connection(&config.uplink.host, &config.uplink.ca, &config.tls).unwrap();
+        .map_err(Error::SocketFailed)?;
+    let mut connection = make_connection(&config.uplink.host, &config.uplink.ca, &config.tls)
+        .map_err(Error::TlsFailed)?;
     let mut socket = Stream::new(&mut connection, &mut psocket);
 
     let burst = handler

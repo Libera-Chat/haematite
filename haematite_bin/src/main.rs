@@ -3,8 +3,8 @@ use std::io::{BufReader, Error as IoError};
 use std::path::Path;
 
 use clap::Parser;
+use haematite_models::config::Config;
 use haematite_models::network::Network;
-use haematite_s2s::config::Config;
 use haematite_s2s::main as s2s_main;
 use serde_yaml::{from_reader, Error as YamlError};
 
@@ -47,5 +47,5 @@ fn main() {
     };
 
     let mut network = Network::new(config.server.clone());
-    s2s_main(config, &mut network);
+    s2s_main(config, &mut network).unwrap();
 }

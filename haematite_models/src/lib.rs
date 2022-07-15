@@ -13,6 +13,7 @@
 
 pub mod ban;
 pub mod channel;
+pub mod config;
 pub mod hostmask;
 pub mod network;
 pub mod oper;

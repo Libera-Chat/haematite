@@ -22,10 +22,10 @@ mod util;
 
 use std::time::SystemTime;
 
+use haematite_models::config::{Config, Error as ConfigError};
 use haematite_models::network::Network;
 use regex::Regex;
 
-use crate::config::{Config, Error as ConfigError};
 use crate::handler::{Error, Handler, Outcome};
 use crate::line::Line;
 

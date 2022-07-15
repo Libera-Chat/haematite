@@ -1,4 +1,4 @@
-use haematite_models::server::Server;
+use crate::server::Server;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]

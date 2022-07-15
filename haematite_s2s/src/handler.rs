@@ -1,6 +1,6 @@
+use haematite_models::config::{Config, Error as ConfigError};
 use haematite_models::network::{Error as StateError, Network};
 
-use crate::config::{Config, Error as ConfigError};
 use crate::line::Error as LineError;
 
 pub enum Outcome {

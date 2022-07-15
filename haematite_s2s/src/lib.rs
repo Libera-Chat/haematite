@@ -10,7 +10,6 @@
 #![warn(clippy::shadow_unrelated)]
 #![allow(clippy::similar_names)]
 
-pub mod config;
 mod handler;
 mod line;
 mod mode;
@@ -23,10 +22,10 @@ use std::net::TcpStream;
 use std::str::from_utf8;
 
 use colored::{Color, Colorize};
+use haematite_models::config::Config;
 use haematite_models::network::Network;
 
-use crate::config::Config;
-use crate::handler::{Handler, Outcome};
+use crate::handler::{Error as HandlerError, Handler, Outcome};
 use crate::ts6::TS6Handler;
 use crate::util::DecodeHybrid;
 
@@ -36,7 +35,10 @@ fn send(mut socket: &TcpStream, data: &str) {
     socket.write_all(b"\r\n").expect("asd");
 }
 
-pub fn main(config: Config, network: &mut Network) {
+/// # Errors
+///
+/// Errors if data read from socket cannot be decoded.
+pub fn main(config: Config, network: &mut Network) -> Result<(), HandlerError> {
     let mut handler = TS6Handler::new();
     handler.validate_config(&config).expect("invalid config");
 
@@ -57,12 +59,7 @@ pub fn main(config: Config, network: &mut Network) {
 
     let mut reader = BufReader::with_capacity(512, &socket);
     let mut buffer = Vec::<u8>::with_capacity(512);
-    loop {
-        let len = reader.read_until(b'\n', &mut buffer).unwrap_or(0);
-        if len == 0 {
-            break;
-        }
-
+    while let Ok(len) = reader.read_until(b'\n', &mut buffer) {
         // chop off \r\n
         buffer.drain(len - 2..len);
 
@@ -76,7 +73,9 @@ pub fn main(config: Config, network: &mut Network) {
             }
         };
 
-        let printable = from_utf8(&buffer).unwrap().to_string();
+        let printable = from_utf8(&buffer)
+            .map_err(|_| HandlerError::InvalidProtocol)?
+            .to_string();
         let printable = match outcome {
             Outcome::Unhandled => printable.color(Color::Red),
             _ => printable.normal(),
@@ -91,4 +90,6 @@ pub fn main(config: Config, network: &mut Network) {
 
         buffer.clear();
     }
+
+    Ok(())
 }

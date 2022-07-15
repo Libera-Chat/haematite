@@ -76,11 +76,7 @@ impl Handler for TS6Handler {
         }
     }
 
-    fn get_burst<'a>(
-        &self,
-        network: &Network,
-        password: &'a str,
-    ) -> Result<Vec<String>, &'static str> {
+    fn get_burst<'a>(&self, network: &Network, password: &'a str) -> Result<Vec<String>, String> {
         let now = SystemTime::now();
         let me = &network.servers[&network.me];
 
@@ -91,7 +87,7 @@ impl Handler for TS6Handler {
                 "SERVER {} 1 :{}",
                 me.name, me.description
             ),
-            format!("SVINFO 6 6 0 {}", now.duration_since(SystemTime::UNIX_EPOCH).map_err(|_e| "GRAN PROBLEMA DE TIEMPO")?.as_secs()),
+            format!("SVINFO 6 6 0 {}", now.duration_since(SystemTime::UNIX_EPOCH).map_err(|_e| "GRAN PROBLEMA DE TIEMPO".to_string())?.as_secs()),
         ])
     }
 
@@ -99,26 +95,26 @@ impl Handler for TS6Handler {
         let line = Line::from(line)?;
 
         match line.command.as_slice() {
-            b"AWAY" => Self::handle_away(network, &line),
-            b"BAN" => Self::handle_ban(network, &line),
-            b"BMASK" => Self::handle_bmask(network, &line),
-            b"CHGHOST" => Self::handle_chghost(network, &line),
-            b"EUID" => Self::handle_euid(network, &line),
-            b"JOIN" => Self::handle_join(network, &line),
-            b"KILL" => Self::handle_kill(network, &line),
-            b"MODE" => Self::handle_mode(network, &line),
-            b"OPER" => Self::handle_oper(network, &line),
-            b"PART" => Self::handle_part(network, &line),
-            b"PASS" => self.handle_pass(network, &line),
-            b"PING" => Self::handle_ping(network, &line),
-            b"QUIT" => Self::handle_quit(network, &line),
-            b"SERVER" => self.handle_server(network, &line),
-            b"SID" => Self::handle_sid(network, &line),
-            b"SJOIN" => Self::handle_sjoin(network, &line),
-            b"SQUIT" => Self::handle_squit(network, &line),
-            b"TB" => Self::handle_tb(network, &line),
-            b"TMODE" => Self::handle_tmode(network, &line),
-            b"TOPIC" => Self::handle_topic(network, &line),
+            b"AWAY" => away::handle(network, &line),
+            b"BAN" => ban::handle(network, &line),
+            b"BMASK" => bmask::handle(network, &line),
+            b"CHGHOST" => chghost::handle(network, &line),
+            b"EUID" => euid::handle(network, &line),
+            b"JOIN" => join::handle(network, &line),
+            b"KILL" => kill::handle(network, &line),
+            b"MODE" => mode::handle(network, &line),
+            b"OPER" => oper::handle(network, &line),
+            b"PART" => part::handle(network, &line),
+            b"PASS" => pass::handle(self, network, &line),
+            b"PING" => ping::handle(network, &line),
+            b"QUIT" => quit::handle(network, &line),
+            b"SERVER" => server::handle(self, network, &line),
+            b"SID" => sid::handle(network, &line),
+            b"SJOIN" => sjoin::handle(network, &line),
+            b"SQUIT" => squit::handle(network, &line),
+            b"TB" => tb::handle(network, &line),
+            b"TMODE" => tmode::handle(network, &line),
+            b"TOPIC" => topic::handle(network, &line),
             _ => Ok(Outcome::Unhandled),
         }
     }

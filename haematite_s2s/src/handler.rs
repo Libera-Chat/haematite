@@ -18,14 +18,37 @@ pub enum Error {
 }
 
 pub trait Handler {
+    /// Check if a given `Config` is suitable for this protocol.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - `Config` object to check.
+    ///
+    /// # Errors
+    ///
+    /// Errors if `config` isn't suitable for this protocol.
     fn validate_config(&self, config: &Config) -> Result<(), ConfigError>;
 
-    fn get_burst<'a>(
-        &self,
-        network: &Network,
-        password: &'a str,
-    ) -> Result<Vec<String>, &'static str>;
+    /// Retrieve protocol-specific handshake data to send to our uplink.
+    ///
+    /// # Arguments
+    ///
+    /// * `network` - Data about our current network.
+    ///
+    /// # Errors
+    ///
+    /// Errors if, for any reason, handshake data cannot be created.
+    fn get_burst<'a>(&self, network: &Network, password: &'a str) -> Result<Vec<String>, String>;
 
+    /// Handle a single line of data.
+    ///
+    /// # Arguments
+    ///
+    /// * `network` - Data about our current network.
+    ///
+    /// # Errors
+    ///
+    /// Errors if a line cannot be handled.
     fn handle(&mut self, network: &mut Network, line: &[u8]) -> Result<Outcome, Error>;
 }
 

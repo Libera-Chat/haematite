@@ -5,11 +5,9 @@ use crate::line::Line;
 
 use super::TS6Handler;
 
-impl TS6Handler {
-    pub fn handle_pass(&mut self, _network: &mut Network, line: &Line) -> Result<Outcome, Error> {
-        Line::assert_arg_count(line, 4)?;
+pub fn handle(ts6: &mut TS6Handler, _network: &mut Network, line: &Line) -> Result<Outcome, Error> {
+    Line::assert_arg_count(line, 4)?;
 
-        self.uplink = Some(line.args[3].clone());
-        Ok(Outcome::Empty)
-    }
+    ts6.uplink = Some(line.args[3].clone());
+    Ok(Outcome::Empty)
 }

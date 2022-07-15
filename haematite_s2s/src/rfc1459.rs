@@ -4,7 +4,7 @@ use crate::line::{Error, Line};
 use crate::util::TakeWord as _;
 
 impl Line {
-    pub fn from(mut line: &[u8]) -> Result<Self, Error> {
+    pub fn try_from_rfc1459(mut line: &[u8]) -> Result<Line, Error> {
         let source = match line.get(0) {
             Some(b':') => Some(line.take_word()[1..].to_vec()),
             _ => None,

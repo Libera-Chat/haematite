@@ -92,7 +92,7 @@ impl Handler for TS6Handler {
     }
 
     fn handle(&mut self, network: &mut Network, line: &[u8]) -> Result<Outcome, Error> {
-        let line = Line::from(line)?;
+        let line = Line::try_from_rfc1459(line)?;
 
         match line.command.as_slice() {
             b"AWAY" => away::handle(network, &line),

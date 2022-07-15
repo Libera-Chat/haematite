@@ -10,7 +10,7 @@
 #![warn(clippy::shadow_unrelated)]
 #![allow(clippy::similar_names)]
 
-mod config;
+pub mod config;
 mod handler;
 mod line;
 mod mode;
@@ -30,23 +30,13 @@ use crate::handler::{Handler, Outcome};
 use crate::ts6::TS6Handler;
 use crate::util::DecodeHybrid;
 
-use clap::Parser;
-
 fn send(mut socket: &TcpStream, data: &str) {
     println!("> {}", data);
     socket.write_all(data.as_bytes()).expect("asd");
     socket.write_all(b"\r\n").expect("asd");
 }
 
-#[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None)]
-struct CliArgs {
-    /// Path to config file
-    #[clap(index = 1)]
-    config: std::path::PathBuf,
-}
-
-fn main_inner(config: Config, network: &mut Network) {
+pub fn main(config: Config, network: &mut Network) {
     let mut handler = TS6Handler::new();
     handler.validate_config(&config).expect("invalid config");
 
@@ -101,19 +91,4 @@ fn main_inner(config: Config, network: &mut Network) {
 
         buffer.clear();
     }
-}
-
-fn main() {
-    let args = CliArgs::parse();
-
-    let config = match Config::from_file(args.config) {
-        Ok(it) => it,
-        Err(err) => {
-            eprintln!("failed to read config file: {}", err);
-            std::process::exit(1);
-        }
-    };
-
-    let mut network = Network::new(config.server.clone());
-    main_inner(config, &mut network);
 }

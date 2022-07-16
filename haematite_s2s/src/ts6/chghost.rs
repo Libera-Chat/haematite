@@ -9,7 +9,7 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
 
     let uid = &line.args[0];
     let user = network.get_user_mut(uid)?;
-    user.host = line.args[1].decode();
+    user.host = line.args[1].decode().into();
 
     Ok(Outcome::Empty)
 }

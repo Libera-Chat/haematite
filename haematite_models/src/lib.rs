@@ -17,6 +17,7 @@ pub mod config;
 pub mod hostmask;
 pub mod network;
 pub mod oper;
+pub mod permission;
 pub mod server;
 pub mod topic;
 pub mod user;

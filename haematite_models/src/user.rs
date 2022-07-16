@@ -1,18 +1,20 @@
+use crate::permission;
+use crate::permission::With;
 use std::collections::HashSet;
 
 #[derive(Default)]
 pub struct User {
-    pub nickname: String,
-    pub username: String,
-    pub realname: String,
-    pub account: Option<String>,
+    pub nickname: With<String, permission::UserInfo>,
+    pub username: With<String, permission::UserInfo>,
+    pub realname: With<String, permission::UserInfo>,
+    pub account: With<Option<String>, permission::UserInfo>,
     pub ip: Option<String>,
     pub rdns: Option<String>,
-    pub host: String,
+    pub host: With<String, permission::UserInfo>,
 
     pub modes: HashSet<char>,
     pub oper: Option<String>,
-    pub away: Option<String>,
+    pub away: With<Option<String>, permission::UserInfo>,
 }
 
 impl User {
@@ -26,13 +28,13 @@ impl User {
         host: String,
     ) -> Self {
         User {
-            nickname,
-            username,
-            realname,
-            account,
+            nickname: nickname.into(),
+            username: username.into(),
+            realname: realname.into(),
+            account: account.into(),
             ip,
             rdns,
-            host,
+            host: host.into(),
             ..Self::default()
         }
     }

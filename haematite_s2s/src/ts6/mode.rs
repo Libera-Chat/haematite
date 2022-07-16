@@ -13,16 +13,16 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
 
     for (mode, remove) in modes_from(&line.args[1].decode()) {
         if remove {
-            user.modes.remove(&mode);
+            user.modes.value.remove(&mode);
         } else {
-            user.modes.insert(mode);
+            user.modes.value.insert(mode);
         }
     }
 
-    if user.oper.is_some() && !user.modes.contains(&'o') {
+    if user.oper.value.is_some() && !user.modes.value.contains(&'o') {
         /* something (hopefully this mode change) caused this user to lose +o,
         so they're no longer opered */
-        user.oper = None;
+        user.oper = None.into();
     }
 
     Ok(Outcome::Empty)

@@ -1,3 +1,5 @@
+pub mod user;
+
 pub trait Permission: Default {
     fn new() -> Self {
         Self::default()
@@ -25,6 +27,12 @@ impl<V, P: Permission> With<V, P> {
     }
 }
 
-#[derive(Default)]
-pub struct UserInfo {}
-impl Permission for UserInfo {}
+macro_rules! define_permission {
+    ($typename:ident) => {
+        #[derive(Default)]
+        pub struct $typename;
+        impl crate::permission::Permission for $typename {}
+    };
+}
+
+pub(crate) use define_permission;

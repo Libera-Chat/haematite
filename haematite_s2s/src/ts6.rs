@@ -2,6 +2,7 @@ mod away;
 mod ban;
 mod bmask;
 mod chghost;
+mod encap;
 mod euid;
 mod join;
 mod kill;
@@ -99,6 +100,7 @@ impl Handler for TS6Handler {
             b"BAN" => ban::handle(network, &line),
             b"BMASK" => bmask::handle(network, &line),
             b"CHGHOST" => chghost::handle(network, &line),
+            b"ENCAP" => encap::handle(network, &line),
             b"EUID" => euid::handle(network, &line),
             b"JOIN" => join::handle(network, &line),
             b"KILL" => kill::handle(network, &line),

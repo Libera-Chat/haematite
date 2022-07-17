@@ -68,9 +68,9 @@ impl Handler for TS6Handler {
         let regex_name = Regex::new(r"^[0-9a-zA-Z]+\.[0-9a-zA-Z\.]*$").unwrap();
 
         if !regex_sid.is_match(&config.server.id) {
-            Err(ConfigError::InvalidName)
-        } else if !regex_name.is_match(&config.server.name) {
             Err(ConfigError::InvalidId)
+        } else if !regex_name.is_match(&config.server.name) {
+            Err(ConfigError::InvalidName)
         } else {
             Ok(())
         }

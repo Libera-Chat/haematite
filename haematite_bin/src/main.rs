@@ -21,6 +21,7 @@ use std::path::Path;
 use clap::Parser;
 use haematite_models::config::{Config, Error as ConfigError};
 use haematite_models::network::Network;
+use haematite_s2s::handler::Handler;
 use haematite_s2s::ts6::TS6Handler;
 use serde_yaml::from_reader;
 
@@ -51,8 +52,16 @@ impl FromFile for Config {
 fn main() {
     let args = CliArgs::parse();
 
-    let config = match Config::from_file(args.config) {
-        Ok(it) => it,
+    let (config, handler) = match Config::from_file(args.config) {
+        Ok(it) => {
+            // Assumption: this will be controlled by the config in the future.
+            let handler = TS6Handler::new();
+            if let Err(e) = handler.validate_config(&it) {
+                eprintln!("invalid config: {}", e);
+                std::process::exit(1);
+            }
+            (it, handler)
+        }
         Err(err) => {
             eprintln!("failed to read config file: {}", err);
             std::process::exit(1);
@@ -60,6 +69,5 @@ fn main() {
     };
 
     let mut network = Network::new(config.server.clone());
-    let handler = TS6Handler::new();
     s2s_run(&config, &mut network, handler).unwrap();
 }

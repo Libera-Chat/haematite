@@ -16,9 +16,9 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
 
     let user = network.get_user(uid)?;
     let hostmask = Hostmask {
-        nick: user.nickname.clone(),
-        user: user.username.clone(),
-        host: user.host.clone(),
+        nick: user.nick.value.clone(),
+        user: user.user.value.clone(),
+        host: user.host.value.clone(),
     };
 
     let channel = network.get_channel_mut(&line.args[0])?;

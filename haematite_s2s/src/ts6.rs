@@ -1,6 +1,7 @@
 mod away;
 mod ban;
 mod bmask;
+mod capab;
 mod chghost;
 mod euid;
 mod join;
@@ -20,6 +21,7 @@ mod tmode;
 mod topic;
 mod util;
 
+use std::collections::HashSet;
 use std::time::SystemTime;
 
 use haematite_models::config::{Config, Error as ConfigError};
@@ -28,6 +30,11 @@ use regex::Regex;
 
 use crate::handler::{Error, Handler, Outcome};
 use crate::line::Line;
+
+const CAPABS: [&str; 19] = [
+    "BAN", "CHW", "CLUSTER", "EBMASK", "ECHO", "ENCAP", "EOPMOD", "EUID", "EX", "IE", "KLN",
+    "KNOCK", "MLOCK", "QS", "RSFNC", "SAVE", "SERVICES", "TB", "UNKLN",
+];
 
 fn parse_mode_args<'a>(
     modes: impl Iterator<Item = (char, bool)>,
@@ -53,6 +60,7 @@ fn parse_mode_args<'a>(
 #[derive(Default)]
 pub struct TS6Handler {
     uplink: Option<Vec<u8>>,
+    uplink_capabs: HashSet<String>,
 }
 
 impl TS6Handler {
@@ -82,12 +90,14 @@ impl Handler for TS6Handler {
 
         Ok(vec![
             format!("PASS {} TS 6 :{}", password, me.id),
-            "CAPAB :BAN CHW CLUSTER ECHO ENCAP EOPMOD EUID EX IE KLN KNOCK MLOCK QS RSFNC SAVE SERVICES TB UNKLN".to_string(),
+            format!("CAPAB :{}", CAPABS.join(" ")),
+            format!("SERVER {} 1 :{}", me.name, me.description),
             format!(
-                "SERVER {} 1 :{}",
-                me.name, me.description
+                "SVINFO 6 6 0 {}",
+                now.duration_since(SystemTime::UNIX_EPOCH)
+                    .map_err(|_e| "GRAN PROBLEMA DE TIEMPO".to_string())?
+                    .as_secs()
             ),
-            format!("SVINFO 6 6 0 {}", now.duration_since(SystemTime::UNIX_EPOCH).map_err(|_e| "GRAN PROBLEMA DE TIEMPO".to_string())?.as_secs()),
         ])
     }
 
@@ -98,6 +108,7 @@ impl Handler for TS6Handler {
             b"AWAY" => away::handle(network, &line),
             b"BAN" => ban::handle(network, &line),
             b"BMASK" => bmask::handle(network, &line),
+            b"CAPAB" => capab::handle(self, network, &line),
             b"CHGHOST" => chghost::handle(network, &line),
             b"EUID" => euid::handle(network, &line),
             b"JOIN" => join::handle(network, &line),

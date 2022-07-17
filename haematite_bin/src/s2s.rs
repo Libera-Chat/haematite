@@ -18,18 +18,24 @@ pub enum Error {
     HandleLine(String, HandlerError),
 }
 
-fn send(socket: &mut impl Write, data: &str) {
+impl From<IoError> for Error {
+    fn from(error: IoError) -> Self {
+        Self::SocketFailed(error)
+    }
+}
+
+fn send(socket: &mut impl Write, data: &str) -> Result<(), Error> {
     println!("> {}", data);
-    socket.write_all(data.as_bytes()).expect("asd");
-    socket.write_all(b"\r\n").expect("asd");
+    socket.write_all(data.as_bytes())?;
+    socket.write_all(b"\r\n")?;
+    Ok(())
 }
 
 /// # Errors
 ///
 /// Errors if data read from socket cannot be decoded.
 pub fn run(config: &Config, network: &mut Network, mut handler: impl Handler) -> Result<(), Error> {
-    let mut psocket = TcpStream::connect((config.uplink.host.clone(), config.uplink.port))
-        .map_err(Error::SocketFailed)?;
+    let mut psocket = TcpStream::connect((config.uplink.host.clone(), config.uplink.port))?;
     let mut connection = make_connection(&config.uplink.host, &config.uplink.ca, &config.tls)
         .map_err(Error::TlsFailed)?;
     let mut socket = Stream::new(&mut connection, &mut psocket);
@@ -38,7 +44,7 @@ pub fn run(config: &Config, network: &mut Network, mut handler: impl Handler) ->
         .get_burst(network, &config.uplink.password)
         .map_err(Error::MakeBurst)?;
     for line in burst {
-        send(&mut socket, &line);
+        send(&mut socket, &line)?;
     }
 
     let mut reader = BufReader::with_capacity(512, socket);
@@ -59,7 +65,7 @@ pub fn run(config: &Config, network: &mut Network, mut handler: impl Handler) ->
 
         if let Outcome::Response(resps) = outcome {
             for resp in resps {
-                send(reader.get_mut(), &resp);
+                send(reader.get_mut(), &resp)?;
             }
         }
 

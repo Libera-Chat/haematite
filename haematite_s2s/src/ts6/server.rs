@@ -12,11 +12,7 @@ pub fn handle(ts6: &mut TS6Handler, network: &mut Network, line: &Line) -> Resul
     Line::assert_arg_count(line, 3)?;
 
     let sid = ts6.uplink.take().ok_or(Error::InvalidState)?;
-    let server = Server {
-        id: sid.decode(),
-        name: line.args[0].decode(),
-        description: line.args[2].decode(),
-    };
+    let server = Server::new(sid.decode(), line.args[0].decode(), line.args[2].decode());
     add_server(network, sid, server)?;
 
     Ok(Outcome::Empty)

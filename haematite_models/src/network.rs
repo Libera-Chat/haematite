@@ -1,9 +1,9 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use linked_hash_map::LinkedHashMap;
 
 use crate::ban::Ban;
-use crate::channel::{Channel, Membership};
+use crate::channel::Channel;
 use crate::server::Server;
 use crate::user::User;
 
@@ -14,12 +14,6 @@ pub struct Network {
     pub channels: HashMap<Vec<u8>, Channel>,
     pub servers: HashMap<Vec<u8>, Server>,
     pub bans: HashMap<char, LinkedHashMap<String, Ban>>,
-
-    pub user_channels: HashMap<Vec<u8>, HashMap<Vec<u8>, Membership>>,
-    pub channel_users: HashMap<Vec<u8>, HashSet<Vec<u8>>>,
-
-    pub user_server: HashMap<Vec<u8>, Vec<u8>>,
-    pub server_users: HashMap<Vec<u8>, HashSet<Vec<u8>>>,
 }
 
 pub enum Error {

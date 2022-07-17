@@ -18,6 +18,8 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     let channel_name = &line.args[1];
     let uids = line.args[line.args.len() - 1]
         .split(|c| c == &b' ')
+        // we may get an empty last param
+        .filter(|a| !a.is_empty())
         .collect::<Vec<&[u8]>>();
 
     let channel_new = Channel::new();

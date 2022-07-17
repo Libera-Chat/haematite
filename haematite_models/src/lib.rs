@@ -10,6 +10,7 @@
 #![warn(clippy::shadow_unrelated)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::similar_names)]
+#![allow(clippy::too_many_arguments)]
 
 pub mod ban;
 pub mod channel;

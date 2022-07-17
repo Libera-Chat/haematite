@@ -3,24 +3,25 @@ use linked_hash_set::LinkedHashSet;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]
-pub struct Channel {
-    pub topic: Option<Topic>,
-    pub modes: HashMap<char, Option<String>>,
-    pub mode_lists: HashMap<char, LinkedHashSet<String>>,
-}
-
-#[derive(Default)]
 pub struct Membership {
     pub status: HashSet<char>,
 }
 
-impl Channel {
+#[derive(Default)]
+pub struct Channel {
+    pub topic: Option<Topic>,
+    pub modes: HashMap<char, Option<String>>,
+    pub mode_lists: HashMap<char, LinkedHashSet<String>>,
+    pub users: HashMap<Vec<u8>, Membership>,
+}
+
+impl Membership {
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl Membership {
+impl Channel {
     pub fn new() -> Self {
         Self::default()
     }

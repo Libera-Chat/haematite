@@ -23,14 +23,19 @@ pub struct Config {
     pub tls: Tls,
 }
 
+// If thiserror gets added, use that.
 #[derive(Debug)]
 pub enum Error {
-    InvalidData(String),
+    InvalidName,
+    InvalidId,
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        <Self as std::fmt::Debug>::fmt(self, f)
+        match self {
+            Error::InvalidName => write!(f, "invalid server name"),
+            Error::InvalidId => write!(f, "invalid server id"),
+        }
     }
 }
 

@@ -15,14 +15,15 @@ mod s2s;
 mod tls;
 
 use std::fs::File;
-use std::io::{BufReader, Error as IoError};
+use std::io::BufReader;
 use std::path::Path;
 
 use clap::Parser;
-use haematite_models::config::Config;
+use haematite_models::config::{Config, Error as ConfigError};
 use haematite_models::network::Network;
+use haematite_s2s::handler::Handler;
 use haematite_s2s::ts6::TS6Handler;
-use serde_yaml::{from_reader, Error as YamlError};
+use serde_yaml::from_reader;
 
 use crate::s2s::run as s2s_run;
 
@@ -34,37 +35,38 @@ struct CliArgs {
     config: std::path::PathBuf,
 }
 
-#[derive(Debug)]
-pub enum Error {
-    ConfigIo(IoError),
-    ConfigParse(YamlError),
-}
-
 trait FromFile {
-    fn from_file(path: impl AsRef<Path>) -> Result<Config, Error>;
+    fn from_file(path: impl AsRef<Path>) -> Result<Config, ConfigError>;
 }
 
 impl FromFile for Config {
-    fn from_file(path: impl AsRef<Path>) -> Result<Self, Error> {
-        let file = File::open(path).map_err(Error::ConfigIo)?;
+    fn from_file(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
+        let file = File::open(path).map_err(ConfigError::Io)?;
         let reader = BufReader::new(file);
 
-        from_reader(reader).map_err(Error::ConfigParse)
+        from_reader(reader).map_err(|v| ConfigError::Parse(v.into()))
     }
 }
 
 fn main() {
     let args = CliArgs::parse();
 
-    let config = match Config::from_file(args.config) {
-        Ok(it) => it,
+    let (config, handler) = match Config::from_file(args.config) {
+        Ok(it) => {
+            // Assumption: this will be controlled by the config in the future.
+            let handler = TS6Handler::new();
+            if let Err(e) = handler.validate_config(&it) {
+                eprintln!("invalid config: {}", e);
+                std::process::exit(1);
+            }
+            (it, handler)
+        }
         Err(err) => {
-            eprintln!("failed to read config file: {:?}", err);
+            eprintln!("failed to read config file: {}", err);
             std::process::exit(1);
         }
     };
 
     let mut network = Network::new(config.server.clone());
-    let handler = TS6Handler::new();
     s2s_run(&config, &mut network, handler).unwrap();
 }

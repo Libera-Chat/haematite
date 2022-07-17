@@ -35,7 +35,6 @@ struct CliArgs {
     config: std::path::PathBuf,
 }
 
-
 trait FromFile {
     fn from_file(path: impl AsRef<Path>) -> Result<Config, ConfigError>;
 }

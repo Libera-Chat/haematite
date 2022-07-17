@@ -50,7 +50,7 @@ impl std::error::Error for Error {
         match self {
             Error::Io(e) => Some(e),
             Error::Parse(e) => Some(e.as_ref()),
-            _ => None
+            _ => None,
         }
     }
 }

@@ -1,4 +1,4 @@
-use std::ops::RangeFrom;
+use std::ops::{Range, RangeFrom};
 
 #[derive(Debug)]
 pub enum Error {
@@ -33,6 +33,15 @@ impl From<RangeFrom<u8>> for ArgRange {
         Self {
             minimum: other.start,
             maximum: u8::MAX,
+        }
+    }
+}
+
+impl From<Range<u8>> for ArgRange {
+    fn from(other: Range<u8>) -> Self {
+        Self {
+            minimum: other.start,
+            maximum: other.end,
         }
     }
 }

@@ -17,7 +17,7 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
         .or_insert_with(Default::default);
 
     for mask in masks_new {
-        masks.insert(mask.decode());
+        masks.insert(mask.decode(), None);
     }
 
     Ok(Outcome::Empty)

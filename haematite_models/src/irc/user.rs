@@ -58,6 +58,10 @@ impl User {
         }
     }
 
+    pub fn hostmask(&self) -> String {
+        format!("{}!{}@{}", self.nick, self.user, self.host)
+    }
+
     /// # Errors
     ///
     /// Will return `Err` if the presented diff is not applicable to the

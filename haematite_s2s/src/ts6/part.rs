@@ -7,7 +7,7 @@ use super::util::del_user_channel;
 
 //:420AAAABG PART #test
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
-    Line::assert_arg_count(line, 1..)?;
+    Line::assert_arg_count(line, 1..2)?;
 
     let uid = line.source.as_ref().ok_or(Error::MissingSource)?;
     let channel_name = &line.args[0];

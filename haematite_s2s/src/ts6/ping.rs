@@ -5,7 +5,7 @@ use crate::line::Line;
 use crate::util::DecodeHybrid as _;
 
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
-    Line::assert_arg_count(line, 1..)?;
+    Line::assert_arg_count(line, 1..2)?;
 
     let source = line
         .source

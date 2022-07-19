@@ -3,6 +3,7 @@ mod ban;
 mod bmask;
 mod capab;
 mod chghost;
+mod ebmask;
 mod encap;
 mod euid;
 mod join;
@@ -111,6 +112,7 @@ impl Handler for TS6Handler {
             b"BMASK" => bmask::handle(network, &line),
             b"CAPAB" => capab::handle(self, network, &line),
             b"CHGHOST" => chghost::handle(network, &line),
+            b"EBMASK" => ebmask::handle(network, &line),
             b"ENCAP" => encap::handle(network, &line),
             b"EUID" => euid::handle(network, &line),
             b"JOIN" => join::handle(network, &line),

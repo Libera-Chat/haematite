@@ -105,7 +105,7 @@ impl Network {
     /// # Errors
     ///
     /// Errors if `id` isn't found in our collection of servers.
-    pub fn _get_server(&self, id: &[u8]) -> Result<&Server, Error> {
+    pub fn get_server(&self, id: &[u8]) -> Result<&Server, Error> {
         self.servers.get(id).ok_or(Error::UnknownServer)
     }
 

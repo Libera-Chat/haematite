@@ -103,7 +103,7 @@ pub fn add_user(network: &mut Network, uid: Vec<u8>, user: User) -> Result<(), E
 }
 
 pub fn del_user(network: &mut Network, uid: &[u8]) -> Result<(), Error> {
-    let user_im = network.get_user_mut(uid)?;
+    let user_im = network.get_user(uid)?;
 
     for channel in user_im.channels.clone() {
         del_user_channel(network, uid, &channel)?;
@@ -132,11 +132,13 @@ pub fn add_server(network: &mut Network, sid: Vec<u8>, server: Server) -> Result
 }
 
 pub fn del_server(network: &mut Network, sid: &[u8]) -> Result<(), Error> {
-    let server = network.servers.remove(sid).ok_or(Error::UnknownServer)?;
+    let server = network.get_server(sid)?;
 
-    for uid in server.users {
+    for uid in server.users.clone() {
         del_user(network, &uid)?;
     }
+
+    network.servers.remove(sid).unwrap();
 
     Ok(())
 }

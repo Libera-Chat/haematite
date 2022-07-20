@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use haematite_models::hostmask::Hostmask;
 use haematite_models::network::Network;
-use haematite_models::topic::Topic;
+use haematite_models::topic::{Setter, Topic};
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
@@ -17,12 +17,17 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
         .parse::<i64>()
         .map_err(|_| Error::InvalidArgument)?;
 
+    let setter = line.args[2].decode();
+    let setter = match Hostmask::try_from(setter.as_str()) {
+        Ok(hostmask) => Setter::Hostmask(hostmask),
+        Err(_) => Setter::Nickname(setter),
+    };
+
     let topic = Topic {
         text: line.args[3].decode(),
         since: NaiveDateTime::from_timestamp(since, 0),
         //TODO: handle missing setter
-        setter: Hostmask::try_from(line.args[2].decode().as_str())
-            .map_err(|_| Error::InvalidArgument)?,
+        setter,
     };
     channel.topic = Some(topic);
 

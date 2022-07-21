@@ -6,9 +6,8 @@ use haematite_models::config::Config;
 use haematite_models::network::Network;
 use haematite_s2s::handler::{Error as HandlerError, Handler, Outcome};
 use haematite_s2s::DecodeHybrid;
-use tokio::io::{split, AsyncBufReadExt, AsyncWriteExt, BufReader, WriteHalf};
+use tokio::io::{split, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
-use tokio_rustls::client::TlsStream;
 use tokio_rustls::TlsConnector;
 
 use crate::tls::{make_config, Error as TlsError};
@@ -27,7 +26,10 @@ impl From<IoError> for Error {
     }
 }
 
-async fn send(socket: &mut WriteHalf<TlsStream<TcpStream>>, data: &str) -> Result<(), Error> {
+async fn send<T>(socket: &mut T, data: &str) -> Result<(), Error>
+where
+    T: AsyncWrite + Unpin,
+{
     println!("> {}", data);
     socket.write_all(data.as_bytes()).await?;
     socket.write_all(b"\r\n").await?;

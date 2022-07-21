@@ -6,6 +6,7 @@ use haematite_models::config::Config;
 use haematite_models::network::Network;
 use haematite_s2s::handler::{Error as HandlerError, Handler, Outcome};
 use haematite_s2s::DecodeHybrid;
+use rustls::client::InvalidDnsNameError;
 use tokio::io::{split, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
 use tokio_rustls::TlsConnector;
@@ -14,15 +15,28 @@ use crate::tls::{make_config, Error as TlsError};
 
 #[derive(Debug)]
 pub enum Error {
-    SocketFailed(IoError),
-    TlsFailed(TlsError),
+    Host,
+    Socket(IoError),
+    Tls(TlsError),
     MakeBurst(String),
     HandleLine(String, HandlerError),
 }
 
 impl From<IoError> for Error {
     fn from(error: IoError) -> Self {
-        Self::SocketFailed(error)
+        Self::Socket(error)
+    }
+}
+
+impl From<InvalidDnsNameError> for Error {
+    fn from(_error: InvalidDnsNameError) -> Self {
+        Self::Host
+    }
+}
+
+impl From<TlsError> for Error {
+    fn from(error: TlsError) -> Self {
+        Self::Tls(error)
     }
 }
 
@@ -41,16 +55,13 @@ pub async fn run(
     network: &mut Network,
     mut handler: impl Handler,
 ) -> Result<(), Error> {
-    let tconfig = make_config(&config.uplink.ca, &config.tls).map_err(Error::TlsFailed)?;
+    let tconfig = make_config(&config.uplink.ca, &config.tls)?;
     let connector = TlsConnector::from(Arc::new(tconfig));
 
-    let socket = TcpStream::connect((config.uplink.host.clone(), config.uplink.port))
-        .await
-        .unwrap();
+    let socket = TcpStream::connect((config.uplink.host.clone(), config.uplink.port)).await?;
     let socket = connector
-        .connect(config.uplink.host.as_str().try_into().unwrap(), socket)
-        .await
-        .unwrap();
+        .connect(config.uplink.host.as_str().try_into()?, socket)
+        .await?;
     let (socket_r, mut socket_w) = split(socket);
 
     let burst = handler

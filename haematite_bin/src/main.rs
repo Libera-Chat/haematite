@@ -48,7 +48,8 @@ impl FromFile for Config {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = CliArgs::parse();
 
     let (config, handler) = match Config::from_file(args.config) {
@@ -68,5 +69,5 @@ fn main() {
     };
 
     let mut network = Network::new(config.server.clone());
-    s2s_run(&config, &mut network, handler).unwrap();
+    s2s_run(&config, &mut network, handler).await.unwrap();
 }

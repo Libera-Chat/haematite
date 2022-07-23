@@ -1,6 +1,6 @@
 use haematite_models::hostmask::Hostmask;
 use haematite_models::network::Network;
-use haematite_models::topic::Topic;
+use haematite_models::topic::{Setter, Topic};
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
@@ -25,7 +25,7 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     channel.topic = Some(Topic {
         text: line.args[1].decode(),
         since: Utc::now().naive_utc(),
-        setter: hostmask,
+        setter: Setter::Hostmask(hostmask),
     });
 
     Ok(Outcome::Empty)

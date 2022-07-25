@@ -11,17 +11,19 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     let uid = &line.args[0];
     let user = network.get_user_mut(uid)?;
 
+    let mut deopered = false;
+
     for (mode, remove) in split_chars(&line.args[1].decode()) {
         if remove {
+            deopered |= mode == 'o';
             user.modes.value.remove(&mode);
         } else {
             user.modes.value.insert(mode);
         }
     }
 
-    if user.oper.value.is_some() && !user.modes.value.contains(&'o') {
-        /* something (hopefully this mode change) caused this user to lose +o,
-        so they're no longer opered */
+    if deopered {
+        // they've lost umode +o, thus are no longer an oper
         user.oper = None.into();
     }
 

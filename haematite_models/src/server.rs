@@ -7,7 +7,7 @@ pub struct Server {
     pub name: String,
     pub description: String,
     #[serde(default)]
-    pub users: HashSet<Vec<u8>>,
+    pub users: HashSet<String>,
 }
 
 impl Server {

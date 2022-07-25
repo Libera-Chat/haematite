@@ -5,7 +5,7 @@ use haematite_models::user::User;
 
 use crate::util::{NoneOr as _, TrueOr as _};
 
-pub fn add_channel(network: &mut Network, name: Vec<u8>, channel: Channel) -> Result<(), Error> {
+pub fn add_channel(network: &mut Network, name: String, channel: Channel) -> Result<(), Error> {
     network
         .channels
         .insert(name, channel)
@@ -14,7 +14,7 @@ pub fn add_channel(network: &mut Network, name: Vec<u8>, channel: Channel) -> Re
     Ok(())
 }
 
-pub fn del_channel(network: &mut Network, channel: &[u8]) -> Result<(), Error> {
+pub fn del_channel(network: &mut Network, channel: &str) -> Result<(), Error> {
     network
         .channels
         .remove(channel)
@@ -23,7 +23,7 @@ pub fn del_channel(network: &mut Network, channel: &[u8]) -> Result<(), Error> {
     Ok(())
 }
 
-fn chk_channel(network: &mut Network, channel_name: &[u8]) -> Result<(), Error> {
+fn chk_channel(network: &mut Network, channel_name: &str) -> Result<(), Error> {
     let channel = network
         .channels
         .get(channel_name)
@@ -38,10 +38,10 @@ fn chk_channel(network: &mut Network, channel_name: &[u8]) -> Result<(), Error> 
 
 pub fn add_user_channel(
     network: &mut Network,
-    uid: Vec<u8>,
+    uid: String,
     // lint complains that `channel` isn't owned after the function,
-    // so it's a ref, not a vec
-    channel: &[u8],
+    // so it's a &str, not a String
+    channel: &str,
     membership: Membership,
 ) -> Result<(), Error> {
     network
@@ -62,7 +62,7 @@ pub fn add_user_channel(
     Ok(())
 }
 
-pub fn del_user_channel(network: &mut Network, uid: &[u8], channel: &[u8]) -> Result<(), Error> {
+pub fn del_user_channel(network: &mut Network, uid: &str, channel: &str) -> Result<(), Error> {
     network
         .users
         .get_mut(uid)
@@ -83,7 +83,7 @@ pub fn del_user_channel(network: &mut Network, uid: &[u8], channel: &[u8]) -> Re
     Ok(())
 }
 
-pub fn add_user(network: &mut Network, uid: Vec<u8>, user: User) -> Result<(), Error> {
+pub fn add_user(network: &mut Network, uid: String, user: User) -> Result<(), Error> {
     let sid = user.server.value.clone();
 
     network
@@ -102,7 +102,7 @@ pub fn add_user(network: &mut Network, uid: Vec<u8>, user: User) -> Result<(), E
     Ok(())
 }
 
-pub fn del_user(network: &mut Network, uid: &[u8]) -> Result<(), Error> {
+pub fn del_user(network: &mut Network, uid: &str) -> Result<(), Error> {
     let user_im = network.get_user(uid)?;
 
     for channel in user_im.channels.clone() {
@@ -122,7 +122,7 @@ pub fn del_user(network: &mut Network, uid: &[u8]) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn add_server(network: &mut Network, sid: Vec<u8>, server: Server) -> Result<(), Error> {
+pub fn add_server(network: &mut Network, sid: String, server: Server) -> Result<(), Error> {
     network
         .servers
         .insert(sid, server)
@@ -131,7 +131,7 @@ pub fn add_server(network: &mut Network, sid: Vec<u8>, server: Server) -> Result
     Ok(())
 }
 
-pub fn del_server(network: &mut Network, sid: &[u8]) -> Result<(), Error> {
+pub fn del_server(network: &mut Network, sid: &str) -> Result<(), Error> {
     let server = network.get_server(sid)?;
 
     for uid in server.users.clone() {

@@ -1,5 +1,7 @@
 use regex::Regex;
+use serde::Serialize;
 
+#[derive(Serialize)]
 pub struct Hostmask {
     pub nick: String,
     pub user: String,

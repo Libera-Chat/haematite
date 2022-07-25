@@ -1,8 +1,11 @@
-use crate::permission;
-use crate::permission::With;
 use std::collections::HashSet;
 
-#[derive(Default)]
+use serde::Serialize;
+
+use crate::permission;
+use crate::permission::With;
+
+#[derive(Default, Serialize)]
 pub struct User {
     pub nick: With<String, permission::user::Nick>,
     pub user: With<String, permission::user::User>,
@@ -11,9 +14,9 @@ pub struct User {
     pub account: With<Option<String>, permission::user::Account>,
     pub ip: With<Option<String>, permission::user::Ip>,
     pub rdns: With<Option<String>, permission::user::Rdns>,
-    pub server: With<Vec<u8>, permission::user::Server>,
+    pub server: With<String, permission::user::Server>,
 
-    pub channels: HashSet<Vec<u8>>,
+    pub channels: HashSet<String>,
     pub modes: With<HashSet<char>, permission::user::Modes>,
     pub oper: With<Option<String>, permission::user::Oper>,
     pub away: With<Option<String>, permission::user::Away>,
@@ -28,7 +31,7 @@ impl User {
         account: Option<String>,
         ip: Option<String>,
         rdns: Option<String>,
-        server: Vec<u8>,
+        server: String,
     ) -> Self {
         User {
             nick: nick.into(),

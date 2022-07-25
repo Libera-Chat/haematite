@@ -15,7 +15,7 @@ use super::util::state::{add_channel, add_user_channel};
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 4)?;
 
-    let channel_name = &line.args[1];
+    let channel_name = line.args[1].decode();
     let uids = line.args[line.args.len() - 1]
         .split(|c| c == &b' ')
         // we may get an empty last param
@@ -27,7 +27,7 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     let channel = match add_channel(network, channel_name.clone(), channel_new) {
         Err(StateError::OverwrittenChannel) => {
             // SJOIN caused by a netjoin elsewhere that's overwriting this channel
-            let channel = network.get_channel_mut(channel_name)?;
+            let channel = network.get_channel_mut(&channel_name)?;
             channel.modes.clear();
             channel.mode_lists.clear();
             channel
@@ -35,7 +35,7 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
         Err(_) => {
             return Err(Error::InvalidState);
         }
-        Ok(_) => network.get_channel_mut(channel_name)?,
+        Ok(_) => network.get_channel_mut(&channel_name)?,
     };
 
     let modes = to_changes(split_chars(&line.args[2].decode()));
@@ -50,18 +50,24 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
         //TODO: precompile
         let statuses = HashSet::from(['+', '@']);
 
-        let mut uid = uid;
+        let mut uid = uid.decode();
 
         let mut membership = Membership::new();
-        while !uid.is_empty() && statuses.contains(&(uid[0] as char)) {
-            membership.status.insert(uid[0] as char);
-            uid = &uid[1..];
+
+        while let Some(char) = uid.chars().next() {
+            if !statuses.contains(&char) {
+                break;
+            }
+
+            membership.status.insert(char);
+            uid.remove(0);
         }
+
         if uid.is_empty() {
             return Err(Error::InvalidArgument);
         }
 
-        add_user_channel(network, uid.to_vec(), channel_name, membership)?;
+        add_user_channel(network, uid, &channel_name, membership)?;
     }
 
     Ok(Outcome::Empty)

@@ -8,8 +8,8 @@ use crate::util::DecodeHybrid as _;
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 2)?;
 
-    let uid = &line.args[0];
-    let user = network.get_user_mut(uid)?;
+    let uid = line.args[0].decode();
+    let user = network.get_user_mut(&uid)?;
 
     let mut deopered = false;
 

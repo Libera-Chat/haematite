@@ -6,8 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono = "0.4.19"
-linked-hash-map = "0.5.6"
-linked_hash_set = "0.1.4"
+chrono = { version = "0.4.19", features = ["serde"] }
+linked-hash-map = { version = "0.5.6", features = ["serde_impl"] }
+linked_hash_set = { version = "0.1.4", features = ["serde"] }
 regex = "1.5.6"
 serde = { version = "1.0", features = ["derive"] }

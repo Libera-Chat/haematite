@@ -9,8 +9,8 @@ use crate::util::DecodeHybrid;
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 3..4)?;
 
-    let uid = &line.args[2];
-    let user = network.get_user_mut(uid)?;
+    let uid = line.args[2].decode();
+    let user = network.get_user_mut(&uid)?;
     user.account.value = line.args.get(3).map(DecodeHybrid::decode);
 
     Ok(Outcome::Empty)

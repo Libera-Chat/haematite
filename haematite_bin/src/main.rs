@@ -21,14 +21,21 @@ use std::path::Path;
 use std::sync::{Arc, RwLock};
 
 use clap::Parser;
+use futures::future::TryFutureExt as _;
 use haematite_models::config::{Config, Error as ConfigError};
 use haematite_models::network::Network;
 use haematite_s2s::handler::Handler;
 use haematite_s2s::ts6::TS6Handler;
 use serde_yaml::from_reader;
 
-use crate::api::run as run_api;
-use crate::s2s::run as run_s2s;
+use crate::api::{run as run_api, Error as ApiError};
+use crate::s2s::{run as run_s2s, Error as S2sError};
+
+#[derive(Debug)]
+enum Error {
+    Api(ApiError),
+    S2s(S2sError),
+}
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -72,8 +79,9 @@ async fn main() {
     };
 
     let network = Arc::new(RwLock::new(Network::new(config.server.clone())));
-    tokio::join!(
-        run_s2s(&config, Arc::clone(&network), handler),
-        run_api(Arc::clone(&network)),
-    );
+    tokio::try_join!(
+        run_s2s(&config, Arc::clone(&network), handler).map_err(Error::S2s),
+        run_api(Arc::clone(&network)).map_err(Error::Api),
+    )
+    .unwrap();
 }

@@ -15,6 +15,7 @@ mod api;
 mod s2s;
 mod tls;
 
+use std::convert::Infallible;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -28,12 +29,12 @@ use haematite_s2s::handler::Handler;
 use haematite_s2s::ts6::TS6Handler;
 use serde_yaml::from_reader;
 
-use crate::api::{run as run_api, Error as ApiError};
+use crate::api::run as run_api;
 use crate::s2s::{run as run_s2s, Error as S2sError};
 
 #[derive(Debug)]
 enum Error {
-    Api(ApiError),
+    Api(Infallible),
     S2s(S2sError),
 }
 
@@ -81,7 +82,7 @@ async fn main() {
     let network = Arc::new(RwLock::new(Network::new(config.server.clone())));
     tokio::try_join!(
         run_s2s(&config, Arc::clone(&network), handler).map_err(Error::S2s),
-        run_api(Arc::clone(&network)).map_err(Error::Api),
+        run_api(&config, Arc::clone(&network)).map_err(Error::Api),
     )
     .unwrap();
 }

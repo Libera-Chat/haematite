@@ -1,6 +1,9 @@
-use crate::server::Server;
-use serde::Deserialize;
+use std::net::SocketAddr;
 use std::path::PathBuf;
+
+use serde::Deserialize;
+
+use crate::server::Server;
 
 #[derive(Debug, Deserialize)]
 pub struct Uplink {
@@ -21,6 +24,7 @@ pub struct Config {
     pub server: Server,
     pub uplink: Uplink,
     pub tls: Tls,
+    pub bind: SocketAddr,
 }
 
 // If thiserror gets added, use that.

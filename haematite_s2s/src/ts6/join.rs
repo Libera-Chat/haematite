@@ -4,7 +4,7 @@ use haematite_models::network::Network;
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
 
-use super::util::add_user_channel;
+use super::util::state::add_user_channel;
 
 //:420AAAABG JOIN 1657651885 #test +
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {

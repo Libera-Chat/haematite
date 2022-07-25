@@ -3,7 +3,7 @@ use haematite_models::network::Network;
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
 
-use super::util::del_user_channel;
+use super::util::state::del_user_channel;
 
 //:420AAAABG PART #test
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {

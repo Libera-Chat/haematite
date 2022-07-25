@@ -2,7 +2,7 @@ use haematite_models::network::Network;
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
-use crate::mode::modes_from;
+use crate::util::mode::split_chars;
 use crate::util::DecodeHybrid as _;
 
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
@@ -11,7 +11,7 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     let uid = &line.args[0];
     let user = network.get_user_mut(uid)?;
 
-    for (mode, remove) in modes_from(&line.args[1].decode()) {
+    for (mode, remove) in split_chars(&line.args[1].decode()) {
         if remove {
             user.modes.value.remove(&mode);
         } else {

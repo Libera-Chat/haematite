@@ -2,6 +2,7 @@ use haematite_models::config::{Config, Error as ConfigError};
 use haematite_models::network::{Error as StateError, Network};
 
 use crate::line::Error as LineError;
+use crate::util::mode::PairError;
 
 pub enum Outcome {
     Unhandled,
@@ -60,6 +61,12 @@ impl From<StateError> for Error {
 
 impl From<LineError> for Error {
     fn from(_error: LineError) -> Self {
+        Self::InvalidProtocol
+    }
+}
+
+impl From<PairError> for Error {
+    fn from(_error: PairError) -> Self {
         Self::InvalidProtocol
     }
 }

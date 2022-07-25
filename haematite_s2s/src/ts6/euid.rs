@@ -3,10 +3,10 @@ use haematite_models::user::User;
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
-use crate::mode::modes_from;
+use crate::util::mode::split_chars;
 use crate::util::DecodeHybrid as _;
 
-use super::util::add_user;
+use super::util::state::add_user;
 
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 11)?;
@@ -33,7 +33,7 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
 
     let mut user = User::new(nick, user, host, real, account, ip, rdns, sid);
 
-    for (mode, _) in modes_from(&line.args[3].decode()) {
+    for (mode, _) in split_chars(&line.args[3].decode()) {
         user.modes.value.insert(mode);
     }
 

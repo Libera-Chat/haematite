@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "haematite_api",
     "haematite_bin",
     "haematite_models",
     "haematite_s2s",

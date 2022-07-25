@@ -11,12 +11,14 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::similar_names)]
 
+mod api;
 mod s2s;
 mod tls;
 
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use std::sync::{Arc, RwLock};
 
 use clap::Parser;
 use haematite_models::config::{Config, Error as ConfigError};
@@ -25,7 +27,8 @@ use haematite_s2s::handler::Handler;
 use haematite_s2s::ts6::TS6Handler;
 use serde_yaml::from_reader;
 
-use crate::s2s::run as s2s_run;
+use crate::api::run as run_api;
+use crate::s2s::run as run_s2s;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -68,6 +71,9 @@ async fn main() {
         }
     };
 
-    let mut network = Network::new(config.server.clone());
-    s2s_run(&config, &mut network, handler).await.unwrap();
+    let network = Arc::new(RwLock::new(Network::new(config.server.clone())));
+    tokio::join!(
+        run_s2s(&config, Arc::clone(&network), handler),
+        run_api(Arc::clone(&network)),
+    );
 }

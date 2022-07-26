@@ -5,7 +5,7 @@ use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::util::DecodeHybrid as _;
 
-use super::util::add_server;
+use super::util::state::add_server;
 use super::TS6Handler;
 
 pub fn handle(ts6: &mut TS6Handler, network: &mut Network, line: &Line) -> Result<Outcome, Error> {

@@ -5,7 +5,7 @@ use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::util::DecodeHybrid as _;
 
-use super::util::add_server;
+use super::util::state::add_server;
 
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 4)?;

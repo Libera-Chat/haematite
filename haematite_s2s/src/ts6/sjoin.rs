@@ -5,11 +5,11 @@ use haematite_models::network::{Error as StateError, Network};
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
-use crate::mode::modes_from;
+use crate::util::mode::{pair_args, split_chars};
 use crate::util::DecodeHybrid;
 
-use super::parse_mode_args;
-use super::util::{add_channel, add_user_channel};
+use super::util::mode::to_changes;
+use super::util::state::{add_channel, add_user_channel};
 
 //:00A SJOIN 1658071435 #services +nst :@00AAAAAAB
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
@@ -38,10 +38,12 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
         Ok(_) => network.get_channel_mut(channel_name)?,
     };
 
-    let modes = modes_from(&line.args[2].decode());
-    let mode_args = line.args[3..line.args.len() - 1].iter();
-    for (mode, _, arg) in parse_mode_args(modes, mode_args) {
-        channel.modes.insert(mode, arg.map(DecodeHybrid::decode));
+    let modes = to_changes(split_chars(&line.args[2].decode()));
+    let mode_args = pair_args(&modes, &line.args[3..line.args.len() - 1])?;
+    for (change, arg) in modes.iter().zip(mode_args.iter()) {
+        channel
+            .modes
+            .insert(change.mode, arg.map(DecodeHybrid::decode));
     }
 
     for uid in uids {

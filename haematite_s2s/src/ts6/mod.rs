@@ -37,27 +37,6 @@ const CAPABS: [&str; 19] = [
     "KNOCK", "MLOCK", "QS", "RSFNC", "SAVE", "SERVICES", "TB", "UNKLN",
 ];
 
-fn parse_mode_args<'a>(
-    modes: impl Iterator<Item = (char, bool)>,
-    mut args: impl Iterator<Item = &'a Vec<u8>>,
-) -> impl Iterator<Item = (char, bool, Option<&'a Vec<u8>>)> {
-    let mut out = Vec::new();
-
-    for (mode, remove) in modes {
-        let arg = match mode {
-            'k' => true,
-            'f' | 'j' | 'l' if !remove => true,
-            _ => false,
-        }
-        //TODO: Resultify this unwrap
-        .then(|| args.next().unwrap());
-
-        out.push((mode, remove, arg));
-    }
-
-    out.into_iter()
-}
-
 #[derive(Default)]
 pub struct TS6Handler {
     uplink: Option<Vec<u8>>,

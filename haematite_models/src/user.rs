@@ -1,25 +1,21 @@
-use std::collections::HashSet;
-
 use serde::Serialize;
-
-use crate::permission;
-use crate::permission::With;
+use std::collections::HashSet;
 
 #[derive(Default, Serialize)]
 pub struct User {
-    pub nick: With<String, permission::user::Nick>,
-    pub user: With<String, permission::user::User>,
-    pub host: With<String, permission::user::Host>,
-    pub real: With<String, permission::user::Real>,
-    pub account: With<Option<String>, permission::user::Account>,
-    pub ip: With<Option<String>, permission::user::Ip>,
-    pub rdns: With<Option<String>, permission::user::Rdns>,
-    pub server: With<String, permission::user::Server>,
+    pub nick: String,
+    pub user: String,
+    pub host: String,
+    pub real: String,
+    pub account: Option<String>,
+    pub ip: Option<String>,
+    pub rdns: Option<String>,
+    pub server: String,
 
     pub channels: HashSet<String>,
-    pub modes: With<HashSet<char>, permission::user::Modes>,
-    pub oper: With<Option<String>, permission::user::Oper>,
-    pub away: With<Option<String>, permission::user::Away>,
+    pub modes: HashSet<char>,
+    pub oper: Option<String>,
+    pub away: Option<String>,
 }
 
 impl User {
@@ -34,14 +30,14 @@ impl User {
         server: String,
     ) -> Self {
         User {
-            nick: nick.into(),
-            user: user.into(),
-            host: host.into(),
-            real: real.into(),
-            account: account.into(),
-            ip: ip.into(),
-            rdns: rdns.into(),
-            server: server.into(),
+            nick,
+            user,
+            host,
+            real,
+            account,
+            ip,
+            rdns,
+            server,
             ..Self::default()
         }
     }

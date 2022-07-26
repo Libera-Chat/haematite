@@ -9,7 +9,7 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
 
     let uid = line.source.as_ref().ok_or(Error::MissingSource)?.decode();
     let user = network.get_user_mut(&uid)?;
-    user.oper = Some(line.args[0].decode()).into();
+    user.oper = Some(line.args[0].decode());
 
     Ok(Outcome::Empty)
 }

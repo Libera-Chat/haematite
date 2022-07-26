@@ -34,7 +34,7 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     let mut user = User::new(nick, user, host, real, account, ip, rdns, sid);
 
     for (mode, _) in split_chars(&line.args[3].decode()) {
-        user.modes.value.insert(mode);
+        user.modes.insert(mode);
     }
 
     add_user(network, uid, user)?;

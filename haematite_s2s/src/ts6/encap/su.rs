@@ -11,7 +11,7 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
 
     let uid = line.args[2].decode();
     let user = network.get_user_mut(&uid)?;
-    user.account.value = line.args.get(3).map(DecodeHybrid::decode);
+    user.account = line.args.get(3).map(DecodeHybrid::decode);
 
     Ok(Outcome::Empty)
 }

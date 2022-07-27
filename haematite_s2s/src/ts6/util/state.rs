@@ -84,7 +84,7 @@ pub fn del_user_channel(network: &mut Network, uid: &str, channel: &str) -> Resu
 }
 
 pub fn add_user(network: &mut Network, uid: String, user: User) -> Result<(), Error> {
-    let sid = user.server.value.clone();
+    let sid = user.server.clone();
 
     network
         .users
@@ -113,7 +113,7 @@ pub fn del_user(network: &mut Network, uid: &str) -> Result<(), Error> {
 
     network
         .servers
-        .get_mut(&user.server.value)
+        .get_mut(&user.server)
         .ok_or(Error::UnknownServer)?
         .users
         .remove(uid)

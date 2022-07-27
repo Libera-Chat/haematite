@@ -16,15 +16,15 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     for (mode, remove) in split_chars(&line.args[1].decode()) {
         if remove {
             deopered |= mode == 'o';
-            user.modes.value.remove(&mode);
+            user.modes.remove(&mode);
         } else {
-            user.modes.value.insert(mode);
+            user.modes.insert(mode);
         }
     }
 
     if deopered {
         // they've lost umode +o, thus are no longer an oper
-        user.oper = None.into();
+        user.oper = None;
     }
 
     Ok(Outcome::Empty)

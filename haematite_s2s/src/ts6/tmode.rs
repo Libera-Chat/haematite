@@ -10,7 +10,7 @@ use crate::util::DecodeHybrid;
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 3..)?;
 
-    let channel = network.get_channel_mut(&line.args[1])?;
+    let channel = network.get_channel_mut(&line.args[1].decode())?;
     let modes = to_changes(split_chars(&line.args[2].decode()));
     let mode_args = pair_args(&modes, &line.args[3..])?;
 

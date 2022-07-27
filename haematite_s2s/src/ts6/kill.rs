@@ -2,6 +2,7 @@ use haematite_models::network::Network;
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
+use crate::util::DecodeHybrid as _;
 
 use super::util::state::del_user;
 
@@ -9,8 +10,8 @@ use super::util::state::del_user;
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 1..2)?;
 
-    let uid = &line.args[0];
-    del_user(network, uid)?;
+    let uid = line.args[0].decode();
+    del_user(network, &uid)?;
 
     Ok(Outcome::Empty)
 }

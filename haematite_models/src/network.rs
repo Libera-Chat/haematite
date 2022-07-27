@@ -1,18 +1,19 @@
 use std::collections::HashMap;
 
 use linked_hash_map::LinkedHashMap;
+use serde::Serialize;
 
 use crate::ban::Ban;
 use crate::channel::Channel;
 use crate::server::Server;
 use crate::user::User;
 
-#[derive(Default)]
+#[derive(Default, Serialize)]
 pub struct Network {
-    pub me: Vec<u8>,
-    pub users: HashMap<Vec<u8>, User>,
-    pub channels: HashMap<Vec<u8>, Channel>,
-    pub servers: HashMap<Vec<u8>, Server>,
+    pub me: String,
+    pub users: HashMap<String, User>,
+    pub channels: HashMap<String, Channel>,
+    pub servers: HashMap<String, Server>,
     pub bans: HashMap<char, LinkedHashMap<String, Ban>>,
 }
 
@@ -30,7 +31,7 @@ pub enum Error {
 
 impl Network {
     pub fn new(me: Server) -> Self {
-        let sid = me.id.as_bytes().to_vec();
+        let sid = me.id.clone();
         let mut network = Network {
             me: sid.clone(),
             ..Self::default()
@@ -49,7 +50,7 @@ impl Network {
     /// # Errors
     ///
     /// Errors if `id` isn't found in our collection of users
-    pub fn get_user(&self, id: &[u8]) -> Result<&User, Error> {
+    pub fn get_user(&self, id: &str) -> Result<&User, Error> {
         self.users.get(id).ok_or(Error::UnknownUser)
     }
 
@@ -63,7 +64,7 @@ impl Network {
     /// # Errors
     ///
     /// Errors if `id` isn't found in our collection of users.
-    pub fn get_user_mut(&mut self, id: &[u8]) -> Result<&mut User, Error> {
+    pub fn get_user_mut(&mut self, id: &str) -> Result<&mut User, Error> {
         self.users.get_mut(id).ok_or(Error::UnknownUser)
     }
 
@@ -77,7 +78,7 @@ impl Network {
     /// # Errors
     ///
     /// Errors if `id` isn't found in our collection of channels.
-    pub fn _get_channel(&self, id: &[u8]) -> Result<&Channel, Error> {
+    pub fn _get_channel(&self, id: &str) -> Result<&Channel, Error> {
         self.channels.get(id).ok_or(Error::UnknownChannel)
     }
 
@@ -91,7 +92,7 @@ impl Network {
     /// # Errors
     ///
     /// Errors if `id` isn't found in our collection of channels.
-    pub fn get_channel_mut(&mut self, id: &[u8]) -> Result<&mut Channel, Error> {
+    pub fn get_channel_mut(&mut self, id: &str) -> Result<&mut Channel, Error> {
         self.channels.get_mut(id).ok_or(Error::UnknownChannel)
     }
 
@@ -105,7 +106,7 @@ impl Network {
     /// # Errors
     ///
     /// Errors if `id` isn't found in our collection of servers.
-    pub fn get_server(&self, id: &[u8]) -> Result<&Server, Error> {
+    pub fn get_server(&self, id: &str) -> Result<&Server, Error> {
         self.servers.get(id).ok_or(Error::UnknownServer)
     }
 
@@ -119,7 +120,7 @@ impl Network {
     /// # Errors
     ///
     /// Errors if `id` isn't found in our collection of servers.
-    pub fn _get_server_mut(&mut self, id: &[u8]) -> Result<&mut Server, Error> {
+    pub fn _get_server_mut(&mut self, id: &str) -> Result<&mut Server, Error> {
         self.servers.get_mut(id).ok_or(Error::UnknownServer)
     }
 }

@@ -7,8 +7,8 @@ use crate::util::DecodeHybrid as _;
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 1..2)?;
 
-    let uid = line.source.as_ref().ok_or(Error::MissingSource)?;
-    let user = network.get_user_mut(uid)?;
+    let uid = line.source.as_ref().ok_or(Error::MissingSource)?.decode();
+    let user = network.get_user_mut(&uid)?;
     user.oper = Some(line.args[0].decode()).into();
 
     Ok(Outcome::Empty)

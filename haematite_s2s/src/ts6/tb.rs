@@ -11,7 +11,7 @@ use crate::util::DecodeHybrid as _;
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 4..)?;
 
-    let channel = network.get_channel_mut(&line.args[0])?;
+    let channel = network.get_channel_mut(&line.args[0].decode())?;
     let since = line.args[1]
         .decode()
         .parse::<i64>()

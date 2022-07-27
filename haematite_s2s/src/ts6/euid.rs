@@ -11,8 +11,8 @@ use super::util::state::add_user;
 pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 11)?;
 
-    let sid = line.source.as_ref().ok_or(Error::MissingSource)?.clone();
-    let uid = line.args[7].clone();
+    let sid = line.source.as_ref().ok_or(Error::MissingSource)?.decode();
+    let uid = line.args[7].decode();
 
     let nick = line.args[0].decode();
     let user = line.args[4].decode();

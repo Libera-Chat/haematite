@@ -1,12 +1,14 @@
 pub mod user;
 
+use serde::Serialize;
+
 pub trait Permission: Default {
     fn new() -> Self {
         Self::default()
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize)]
 pub struct With<V, P: Permission> {
     pub value: V,
     pub permission: P,
@@ -29,7 +31,7 @@ impl<V, P: Permission> With<V, P> {
 
 macro_rules! define_permission {
     ($typename:ident) => {
-        #[derive(Default)]
+        #[derive(Default, serde::Serialize)]
         pub struct $typename;
         impl crate::permission::Permission for $typename {}
     };

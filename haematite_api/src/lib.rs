@@ -11,8 +11,9 @@ enum PathVertex {
 
 fn path_map(paths: &HashSet<&str>) -> HashMap<String, PathVertex> {
     let mut output = HashMap::new();
-    let mut collected_children = HashMap::new();
 
+    let mut collected_children = HashMap::new();
+    let mut collected_all = Vec::new();
     let mut paths = Vec::from_iter(paths.clone());
     // sort this so that if we have a "*", it comes first
     paths.sort_unstable();
@@ -23,17 +24,20 @@ fn path_map(paths: &HashSet<&str>) -> HashMap<String, PathVertex> {
             None => (path, None),
         };
 
-        // if we have a "*", store everything under it
-        let children = match collected_children.get_mut("*") {
-            Some(children) => children,
-            None => collected_children
-                .entry(parent.to_owned())
-                .or_insert_with(Vec::new),
+        let children = match parent {
+            "*" => &mut collected_all,
+            _ => collected_children
+                .entry(parent.to_string())
+                .or_insert_with(|| collected_all.clone()),
         };
 
         if let Some(child) = child {
             children.push(child);
         }
+    }
+
+    if !collected_all.is_empty() {
+        collected_children.insert("*".to_string(), collected_all);
     }
 
     for (parent, children) in collected_children.into_iter() {
@@ -57,7 +61,7 @@ fn prune(paths: &HashMap<String, PathVertex>, value: Value) -> Option<Value> {
         let mut map_new = Map::new();
 
         for (key, value) in map_old.into_iter() {
-            if let Some(paths) = all.or_else(|| paths.get(&key)) {
+            if let Some(paths) = paths.get(&key).or(all) {
                 let paths = match paths {
                     // this branch of permissions expects more tree
                     PathVertex::Internal(paths) => paths,
@@ -90,7 +94,7 @@ pub enum Error {
 
 impl Api {
     pub fn get_network(network: &Network) -> Result<String, serde_json::Error> {
-        let paths = path_map(&HashSet::from(["users/*/nick", "users/00AAAAAAG/nick"]));
+        let paths = path_map(&HashSet::from(["users/*/nick", "users/00AAAAAAG/host"]));
 
         if let Some(value) = prune(&paths, serde_json::to_value(network)?) {
             Ok(value.to_string())

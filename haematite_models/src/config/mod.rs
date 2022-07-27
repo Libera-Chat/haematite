@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use serde::Deserialize;
 
-use crate::server::Server;
+use crate::irc::server::Server;
 
 #[derive(Debug, Deserialize)]
 pub struct Uplink {

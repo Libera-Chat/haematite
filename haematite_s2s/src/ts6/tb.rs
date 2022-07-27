@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
-use haematite_models::hostmask::Hostmask;
-use haematite_models::network::Network;
-use haematite_models::topic::{Setter, Topic};
+use haematite_models::irc::hostmask::Hostmask;
+use haematite_models::irc::network::Network;
+use haematite_models::irc::topic::{Setter, Topic};
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;

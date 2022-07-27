@@ -24,7 +24,7 @@ use std::sync::{Arc, RwLock};
 use clap::Parser;
 use futures::future::TryFutureExt as _;
 use haematite_models::config::{Config, Error as ConfigError};
-use haematite_models::network::Network;
+use haematite_models::irc::network::Network;
 use haematite_s2s::handler::Handler;
 use haematite_s2s::ts6::TS6Handler;
 use serde_yaml::from_reader;

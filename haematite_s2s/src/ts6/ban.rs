@@ -1,10 +1,10 @@
 use std::time::Duration;
 
 use chrono::NaiveDateTime;
-use haematite_models::ban::Ban;
-use haematite_models::hostmask::{Error as HostmaskError, Hostmask};
-use haematite_models::network::{Error as StateError, Network};
-use haematite_models::oper::Oper;
+use haematite_models::irc::ban::Ban;
+use haematite_models::irc::hostmask::{Error as HostmaskError, Hostmask};
+use haematite_models::irc::network::{Error as StateError, Network};
+use haematite_models::irc::oper::Oper;
 use regex::Regex;
 
 use crate::handler::{Error, Outcome};

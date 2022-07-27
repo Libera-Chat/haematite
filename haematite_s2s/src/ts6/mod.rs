@@ -26,7 +26,7 @@ use std::collections::HashSet;
 use std::time::SystemTime;
 
 use haematite_models::config::{Config, Error as ConfigError};
-use haematite_models::network::Network;
+use haematite_models::irc::network::Network;
 use regex::Regex;
 
 use crate::handler::{Error, Handler, Outcome};

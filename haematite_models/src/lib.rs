@@ -12,12 +12,5 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::too_many_arguments)]
 
-pub mod ban;
-pub mod channel;
 pub mod config;
-pub mod hostmask;
-pub mod network;
-pub mod oper;
-pub mod server;
-pub mod topic;
-pub mod user;
+pub mod irc;

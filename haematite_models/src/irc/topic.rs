@@ -2,7 +2,7 @@ use chrono::naive::serde::ts_seconds;
 use chrono::NaiveDateTime;
 use serde::Serialize;
 
-use crate::hostmask::Hostmask;
+use super::hostmask::Hostmask;
 
 #[derive(Serialize)]
 pub enum Setter {

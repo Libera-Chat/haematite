@@ -4,7 +4,7 @@ use chrono::naive::serde::ts_seconds;
 use chrono::NaiveDateTime;
 use serde::Serialize;
 
-use crate::oper::Oper;
+use super::oper::Oper;
 
 #[derive(Serialize)]
 pub struct Ban {

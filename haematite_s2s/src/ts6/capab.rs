@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use haematite_models::network::Network;
+use haematite_models::irc::network::Network;
 
 use super::{TS6Handler, CAPABS};
 use crate::handler::{Error, Outcome};

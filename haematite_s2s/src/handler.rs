@@ -1,5 +1,5 @@
 use haematite_models::config::{Config, Error as ConfigError};
-use haematite_models::network::{Error as StateError, Network};
+use haematite_models::irc::network::{Error as StateError, Network};
 
 use crate::line::Error as LineError;
 use crate::util::mode::PairError;

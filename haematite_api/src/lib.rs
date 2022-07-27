@@ -1,6 +1,6 @@
 mod permissions;
 
-use haematite_models::network::Network;
+use haematite_models::irc::network::Network;
 use serde_json::{Error as JsonError, Map, Value};
 
 use crate::permissions::{MergeError, Tree, Vertex};

@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use closure::closure;
 use haematite_api::{Api, Format};
 use haematite_models::config::Config;
-use haematite_models::network::Network;
+use haematite_models::irc::network::Network;
 use warp::Filter;
 
 pub async fn run(config: &Config, network: Arc<RwLock<Network>>) -> Result<(), Infallible> {

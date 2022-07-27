@@ -17,16 +17,12 @@ fn split_path(path: &str) -> Vec<String> {
 
 fn to_tree(paths: &HashSet<&str>) -> Tree {
     let mut hashmap = HashMap::new();
-
     let mut collected_children = HashMap::new();
-    let mut paths = Vec::from_iter(paths.clone());
-    // sort this so that if we have a "*", it comes first
-    paths.sort_unstable();
 
     for path in paths {
         let (parent, child) = match path.split_once('/') {
             Some((parent, child)) => (parent, Some(child)),
-            None => (path, None),
+            None => (*path, None),
         };
 
         let children = collected_children

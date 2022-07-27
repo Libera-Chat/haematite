@@ -1,5 +1,5 @@
 use std::io::Error as IoError;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use colored::{Color, Colorize};
 use haematite_models::config::Config;
@@ -52,7 +52,7 @@ where
 
 pub async fn run(
     config: &Config,
-    network: &mut Network,
+    network_lock: Arc<RwLock<Network>>,
     mut handler: impl Handler,
 ) -> Result<(), Error> {
     let tconfig = make_config(&config.uplink.ca, &config.tls)?;
@@ -62,11 +62,16 @@ pub async fn run(
     let socket = connector
         .connect(config.uplink.host.as_str().try_into()?, socket)
         .await?;
+
     let (socket_r, mut socket_w) = split(socket);
 
-    let burst = handler
-        .get_burst(network, &config.uplink.password)
-        .map_err(Error::MakeBurst)?;
+    let burst = {
+        let network = network_lock.read().unwrap();
+        handler
+            .get_burst(&network, &config.uplink.password)
+            .map_err(Error::MakeBurst)?
+    };
+
     for line in burst {
         send(&mut socket_w, &line).await?;
     }
@@ -77,9 +82,13 @@ pub async fn run(
         // chop off \r\n
         buffer.drain(len - 2..len);
 
-        let outcome = handler
-            .handle(network, &buffer)
-            .map_err(|e| Error::HandleLine(DecodeHybrid::decode(&buffer), e))?;
+        let outcome = {
+            let mut network = network_lock.write().unwrap();
+            handler
+                .handle(&mut network, &buffer)
+                .map_err(|e| Error::HandleLine(DecodeHybrid::decode(&buffer), e))?
+        };
+
         let printable = DecodeHybrid::decode(&buffer);
         let printable = match outcome {
             Outcome::Unhandled => printable.color(Color::Red),

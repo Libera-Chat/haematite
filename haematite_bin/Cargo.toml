@@ -6,13 +6,17 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-haematite_s2s = { path = "../haematite_s2s" }
+haematite_api = { path = "../haematite_api" }
 haematite_models = { path = "../haematite_models" }
+haematite_s2s = { path = "../haematite_s2s" }
 
 clap = { version = "3.2.10", features = ["derive"] }
+closure = "0.3.0"
 colored = "2.0.0"
+futures = "0.3.21"
 rustls = "0.20.6"
 rustls-pemfile = "1.0.0"
 serde_yaml = "0.8.25"
 tokio = { version = "1.20.0", features = ["full"] }
 tokio-rustls = "0.23.4"
+warp = "0.3.2"

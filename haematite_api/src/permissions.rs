@@ -69,6 +69,7 @@ impl Tree {
         Self::default()
     }
 
+    #[allow(dead_code)]
     pub fn from_paths(paths: &HashSet<&str>) -> Self {
         to_tree(paths)
     }
@@ -77,6 +78,7 @@ impl Tree {
         self.hashmap.get(key)
     }
 
+    #[allow(dead_code)]
     pub fn update(&mut self, other: Tree) -> Result<(), MergeError> {
         for (key, value) in other.hashmap.into_iter() {
             match self.hashmap.get_mut(&key) {
@@ -103,6 +105,7 @@ impl Tree {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn add_path(&mut self, path: &str) -> Result<(), MergeError> {
         let tree = to_tree(&HashSet::from([path]));
         self.update(tree)

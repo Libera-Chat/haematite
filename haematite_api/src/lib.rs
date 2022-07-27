@@ -1,7 +1,5 @@
 mod permissions;
 
-use std::collections::HashSet;
-
 use haematite_models::network::Network;
 use serde_json::{Error as JsonError, Map, Value};
 
@@ -79,8 +77,8 @@ impl Api {
     }
 
     pub fn get_network(&self, network: &Network) -> Result<String, Error> {
-        let mut paths = Tree::from_paths(&HashSet::from(["users/*/nick"]));
-        paths.add_path("users/00AAAAAAG/host").unwrap();
+        //TODO: retreive actual tree from a user object somewhere
+        let paths = Tree::new();
 
         let value = prune(&paths, serde_json::to_value(network)?).ok_or(Error::Argument)?;
 
@@ -88,7 +86,8 @@ impl Api {
     }
 
     pub fn get_user(&self, network: &Network, uid: &str) -> Result<String, Error> {
-        let paths = Tree::from_paths(&HashSet::from(["users/00AAAAAAG/nick"]));
+        //TODO: retreive actual tree from a user object somewhere
+        let paths = Tree::new();
         let user = network.users.get(uid).ok_or(Error::Argument)?;
 
         let relevant_paths = paths

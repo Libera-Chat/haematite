@@ -11,6 +11,7 @@ haematite_models = { path = "../haematite_models" }
 haematite_s2s = { path = "../haematite_s2s" }
 
 clap = { version = "3.2.10", features = ["derive"] }
+closure = "0.3.0"
 colored = "2.0.0"
 futures = "0.3.21"
 rustls = "0.20.6"

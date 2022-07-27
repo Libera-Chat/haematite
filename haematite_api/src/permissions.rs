@@ -11,6 +11,10 @@ pub struct Tree {
     hashmap: HashMap<String, Vertex>,
 }
 
+fn split_path(path: &str) -> Vec<String> {
+    path.split('/').map(String::from).collect()
+}
+
 fn to_tree(paths: &HashSet<&str>) -> Tree {
     let mut hashmap = HashMap::new();
 
@@ -56,8 +60,8 @@ fn to_tree(paths: &HashSet<&str>) -> Tree {
 
 #[derive(Debug)]
 pub enum MergeError {
-    OverwriteInternal,
-    OverwriteExternal,
+    MismatchInternal,
+    MismatchExternal,
 }
 
 impl Tree {
@@ -73,7 +77,7 @@ impl Tree {
         self.hashmap.get(key)
     }
 
-    pub fn merge(&mut self, other: Tree) -> Result<(), MergeError> {
+    pub fn update(&mut self, other: Tree) -> Result<(), MergeError> {
         for (key, value) in other.hashmap.into_iter() {
             match self.hashmap.get_mut(&key) {
                 None => {
@@ -81,16 +85,16 @@ impl Tree {
                 }
                 Some(Vertex::Internal(tree_us)) => {
                     if let Vertex::Internal(tree_them) = value {
-                        tree_us.merge(tree_them)?;
+                        tree_us.update(tree_them)?;
                     } else {
-                        return Err(MergeError::OverwriteInternal);
+                        return Err(MergeError::MismatchInternal);
                     }
                 }
                 Some(Vertex::External) => {
                     if matches!(value, Vertex::External) {
                         self.hashmap.insert(key, value);
                     } else {
-                        return Err(MergeError::OverwriteExternal);
+                        return Err(MergeError::MismatchExternal);
                     }
                 }
             };
@@ -101,6 +105,21 @@ impl Tree {
 
     pub fn add_path(&mut self, path: &str) -> Result<(), MergeError> {
         let tree = to_tree(&HashSet::from([path]));
-        self.merge(tree)
+        self.update(tree)
+    }
+
+    pub fn find_tree(&self, path: &str) -> Option<&Tree> {
+        let query = split_path(path);
+
+        let mut current_tree = self;
+        for part in query {
+            if let Some(Vertex::Internal(tree)) = current_tree.hashmap.get(&part) {
+                current_tree = tree;
+            } else {
+                return None;
+            }
+        }
+
+        Some(current_tree)
     }
 }

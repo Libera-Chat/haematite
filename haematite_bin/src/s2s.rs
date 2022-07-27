@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use colored::{Color, Colorize};
 use haematite_models::config::Config;
-use haematite_models::network::Network;
+use haematite_models::irc::network::Network;
 use haematite_s2s::handler::{Error as HandlerError, Handler, Outcome};
 use haematite_s2s::DecodeHybrid;
 use rustls::client::InvalidDnsNameError;

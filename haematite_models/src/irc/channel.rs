@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use linked_hash_set::LinkedHashSet;
 use serde::Serialize;
 
-use crate::topic::Topic;
+use super::topic::Topic;
 
 #[derive(Default, Serialize)]
 pub struct Membership {

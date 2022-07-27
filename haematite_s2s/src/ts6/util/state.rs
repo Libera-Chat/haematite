@@ -1,7 +1,7 @@
-use haematite_models::channel::{Channel, Membership};
-use haematite_models::network::{Error, Network};
-use haematite_models::server::Server;
-use haematite_models::user::User;
+use haematite_models::irc::channel::{Channel, Membership};
+use haematite_models::irc::network::{Error, Network};
+use haematite_models::irc::server::Server;
+use haematite_models::irc::user::User;
 
 use crate::util::{NoneOr as _, TrueOr as _};
 

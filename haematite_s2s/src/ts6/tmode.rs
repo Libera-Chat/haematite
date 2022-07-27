@@ -1,4 +1,4 @@
-use haematite_models::network::Network;
+use haematite_models::irc::network::Network;
 
 use super::util::mode::to_changes;
 use crate::handler::{Error, Outcome};

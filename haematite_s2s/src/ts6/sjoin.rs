@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
-use haematite_models::channel::{Channel, Membership};
-use haematite_models::network::{Error as StateError, Network};
+use haematite_models::irc::channel::{Channel, Membership};
+use haematite_models::irc::network::{Error as StateError, Network};
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;

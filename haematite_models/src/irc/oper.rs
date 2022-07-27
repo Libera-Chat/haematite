@@ -1,4 +1,4 @@
-use crate::hostmask::Hostmask;
+use super::hostmask::Hostmask;
 use serde::Serialize;
 
 #[derive(Serialize)]

@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use linked_hash_map::LinkedHashMap;
 use serde::Serialize;
 
-use crate::ban::Ban;
-use crate::channel::Channel;
-use crate::server::Server;
-use crate::user::User;
+use super::ban::Ban;
+use super::channel::Channel;
+use super::server::Server;
+use super::user::User;
 
 #[derive(Default, Serialize)]
 pub struct Network {

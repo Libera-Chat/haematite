@@ -1,5 +1,5 @@
-use haematite_models::network::Network;
-use haematite_models::server::Server;
+use haematite_models::irc::network::Network;
+use haematite_models::irc::server::Server;
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;

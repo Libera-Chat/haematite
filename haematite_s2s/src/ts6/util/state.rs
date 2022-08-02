@@ -1,4 +1,5 @@
-use haematite_models::irc::channel::{Channel, Membership};
+use haematite_models::irc::channel::Channel;
+use haematite_models::irc::membership::Membership;
 use haematite_models::irc::network::{Error, Network};
 use haematite_models::irc::server::Server;
 use haematite_models::irc::user::User;

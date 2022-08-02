@@ -4,9 +4,9 @@ use linked_hash_map::LinkedHashMap;
 use serde::Serialize;
 
 use super::ban::Ban;
-use super::channel::Channel;
+use super::channel::{Channel, Diff as ChannelDiff};
 use super::server::Server;
-use super::user::User;
+use super::user::{Diff as UserDiff, User};
 
 #[derive(Default, Serialize)]
 pub struct Network {
@@ -15,6 +15,19 @@ pub struct Network {
     pub channels: HashMap<String, Channel>,
     pub servers: HashMap<String, Server>,
     pub bans: HashMap<char, LinkedHashMap<String, Ban>>,
+}
+
+pub enum Action<T> {
+    Add(T),
+    Remove,
+}
+
+pub enum Diff {
+    InternalUser(String, UserDiff),
+    ExternalUser(String, Action<User>),
+
+    InternalChannel(String, ChannelDiff),
+    ExternalChannel(String, Action<Channel>),
 }
 
 pub enum Error {
@@ -38,6 +51,21 @@ impl Network {
         };
         network.servers.insert(sid, me);
         network
+    }
+
+    pub fn update(&mut self, diff: Diff) {
+        match diff {
+            Diff::ExternalUser(uid, action) => drop(match action {
+                Action::Add(user) => self.users.insert(uid, user),
+                Action::Remove => self.users.remove(&uid),
+            }),
+            Diff::ExternalChannel(name, action) => drop(match action {
+                Action::Add(channel) => self.channels.insert(name, channel),
+                Action::Remove => self.channels.remove(&name),
+            }),
+            Diff::InternalUser(uid, diff) => self.users.get_mut(&uid).unwrap().update(diff),
+            Diff::InternalChannel(name, diff) => self.channels.get_mut(&name).unwrap().update(diff),
+        };
     }
 
     /// Find a user by its ID.

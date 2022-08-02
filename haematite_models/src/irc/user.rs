@@ -18,6 +18,20 @@ pub struct User {
     pub away: Option<String>,
 }
 
+pub enum Action<T> {
+    Add(T),
+    Remove,
+}
+
+pub enum Diff {
+    Nick(String),
+    User(String),
+    Host(String),
+    Away(Option<String>),
+    Oper(Option<String>),
+    Mode(char, Action<()>),
+}
+
 impl User {
     pub fn new(
         nick: String,
@@ -40,5 +54,19 @@ impl User {
             server,
             ..Self::default()
         }
+    }
+
+    pub fn update(&mut self, diff: Diff) {
+        match diff {
+            Diff::Nick(nick) => self.nick = nick,
+            Diff::User(user) => self.user = user,
+            Diff::Host(host) => self.host = host,
+            Diff::Mode(char, action) => drop(match action {
+                Action::Add(_) => self.modes.insert(char),
+                Action::Remove => self.modes.remove(&char),
+            }),
+            Diff::Oper(oper) => self.oper = oper,
+            Diff::Away(away) => self.away = away,
+        };
     }
 }

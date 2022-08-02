@@ -90,17 +90,23 @@ pub async fn run(
         };
 
         let printable = DecodeHybrid::decode(&buffer);
-        let printable = match outcome {
-            Outcome::Unhandled => printable.color(Color::Red),
-            _ => printable.normal(),
-        };
-        println!("< {}", printable);
-
-        if let Outcome::Response(resps) = outcome {
-            for resp in resps {
-                send(&mut socket_w, &resp).await?;
+        match outcome {
+            Outcome::Unhandled => println!("< {}", printable.color(Color::Red)),
+            Outcome::State(diffs) => {
+                let mut network = network_lock.write().unwrap();
+                for diff in diffs {
+                    network.update(diff);
+                }
+                println!("< {}", printable);
             }
-        }
+            Outcome::Response(responses) => {
+                println!("< {}", printable);
+                for response in responses {
+                    send(&mut socket_w, &response).await?;
+                }
+            }
+            _ => println!("< {}", printable),
+        };
 
         buffer.clear();
     }

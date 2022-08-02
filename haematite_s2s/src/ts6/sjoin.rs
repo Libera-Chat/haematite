@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
-use haematite_models::irc::channel::{Channel, Membership};
+use haematite_models::irc::channel::Channel;
+use haematite_models::irc::membership::Membership;
 use haematite_models::irc::network::{Error as StateError, Network};
 
 use crate::handler::{Error, Outcome};

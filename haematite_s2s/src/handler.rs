@@ -1,5 +1,5 @@
 use haematite_models::config::{Config, Error as ConfigError};
-use haematite_models::irc::network::{Error as StateError, Network};
+use haematite_models::irc::network::{Diff, Error as StateError, Network};
 
 use crate::line::Error as LineError;
 use crate::util::mode::PairError;
@@ -8,6 +8,7 @@ pub enum Outcome {
     Unhandled,
     Empty,
     Response(Vec<String>),
+    State(Vec<Diff>),
 }
 
 #[derive(Debug)]

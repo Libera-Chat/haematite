@@ -1,14 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use linked_hash_set::LinkedHashSet;
 use serde::Serialize;
 
 use super::topic::Topic;
-
-#[derive(Default, Serialize)]
-pub struct Membership {
-    pub status: HashSet<char>,
-}
+use crate::irc::membership::{Diff as MembershipDiff, Membership};
 
 #[derive(Default, Serialize)]
 pub struct Channel {
@@ -18,14 +14,20 @@ pub struct Channel {
     pub users: HashMap<String, Membership>,
 }
 
-impl Membership {
-    pub fn new() -> Self {
-        Self::default()
-    }
+pub enum Diff {
+    Topic(Option<Topic>),
+    User(String, MembershipDiff),
 }
 
 impl Channel {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn update(&mut self, diff: Diff) {
+        match diff {
+            Diff::Topic(topic) => self.topic = topic,
+            Diff::User(uid, diff) => self.users.get_mut(&uid).unwrap().update(diff),
+        };
     }
 }

@@ -8,6 +8,7 @@ mod euid;
 mod join;
 mod kill;
 mod mode;
+mod nick;
 mod oper;
 mod part;
 mod pass;
@@ -85,7 +86,7 @@ impl Handler for TS6Handler {
         let line = Line::try_from_rfc1459(line)?;
 
         match line.command.as_slice() {
-            b"AWAY" => away::handle(network, &line),
+            b"AWAY" => away::handle(&line),
             b"BAN" => ban::handle(network, &line),
             b"BMASK" => bmask::handle(network, &line),
             b"CAPAB" => capab::handle(self, network, &line),
@@ -94,7 +95,8 @@ impl Handler for TS6Handler {
             b"EUID" => euid::handle(network, &line),
             b"JOIN" => join::handle(network, &line),
             b"KILL" => kill::handle(network, &line),
-            b"MODE" => mode::handle(network, &line),
+            b"MODE" => mode::handle(&line),
+            b"NICK" => nick::handle(&line),
             b"OPER" => oper::handle(network, &line),
             b"PART" => part::handle(network, &line),
             b"PASS" => pass::handle(self, network, &line),

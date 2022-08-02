@@ -1,4 +1,4 @@
-use haematite_models::irc::channel::Membership;
+use haematite_models::irc::membership::Membership;
 use haematite_models::irc::network::Network;
 
 use crate::handler::{Error, Outcome};

@@ -1,4 +1,5 @@
 use std::io::Error as IoError;
+use std::str::from_utf8;
 use std::sync::{Arc, RwLock};
 
 use colored::{Color, Colorize};
@@ -7,6 +8,7 @@ use haematite_models::irc::network::Network;
 use haematite_s2s::handler::{Error as HandlerError, Handler, Outcome};
 use haematite_s2s::DecodeHybrid;
 use rustls::client::InvalidDnsNameError;
+use serde_json::Serializer;
 use tokio::io::{split, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
 use tokio_rustls::TlsConnector;
@@ -95,7 +97,10 @@ pub async fn run(
             Outcome::State(diffs) => {
                 let mut network = network_lock.write().unwrap();
                 for diff in diffs {
-                    network.update(diff);
+                    let mut buf = Vec::new();
+                    let mut ser = Serializer::new(&mut buf);
+                    let path = network.update(diff, &mut ser).unwrap();
+                    println!("{} {}", path, from_utf8(&buf).unwrap());
                 }
                 println!("< {}", printable);
             }

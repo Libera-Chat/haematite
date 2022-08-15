@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use std::collections::HashSet;
 
 #[derive(Default, Serialize)]
@@ -19,12 +19,19 @@ impl Membership {
         Self::default()
     }
 
-    pub fn update(&mut self, diff: Diff) {
+    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<String, S::Error>
+    where
+        S: Serializer,
+    {
         match diff {
-            Diff::Status(char, action) => match action {
-                Action::Add => self.status.insert(char),
-                Action::Remove => self.status.remove(&char),
-            },
-        };
+            Diff::Status(char, action) => {
+                match action {
+                    Action::Add => self.status.insert(char),
+                    Action::Remove => self.status.remove(&char),
+                };
+                self.status.serialize(ser)?;
+                Ok("status".to_owned())
+            }
+        }
     }
 }

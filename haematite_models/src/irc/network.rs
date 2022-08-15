@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use linked_hash_map::LinkedHashMap;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 
 use super::ban::Ban;
 use super::channel::{Channel, Diff as ChannelDiff};
@@ -53,19 +53,48 @@ impl Network {
         network
     }
 
-    pub fn update(&mut self, diff: Diff) {
+    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<String, S::Error>
+    where
+        S: Serializer,
+    {
         match diff {
-            Diff::ExternalUser(uid, action) => drop(match action {
-                Action::Add(user) => self.users.insert(uid, user),
-                Action::Remove => self.users.remove(&uid),
-            }),
-            Diff::ExternalChannel(name, action) => drop(match action {
-                Action::Add(channel) => self.channels.insert(name, channel),
-                Action::Remove => self.channels.remove(&name),
-            }),
-            Diff::InternalUser(uid, diff) => self.users.get_mut(&uid).unwrap().update(diff),
-            Diff::InternalChannel(name, diff) => self.channels.get_mut(&name).unwrap().update(diff),
-        };
+            Diff::ExternalUser(uid, action) => {
+                let path = format!("users/{}", uid);
+                match action {
+                    Action::Add(user) => {
+                        user.serialize(ser)?;
+                        self.users.insert(uid, user);
+                    }
+                    Action::Remove => {
+                        self.users.remove(&uid);
+                        ser.serialize_none()?;
+                    }
+                };
+                Ok(path)
+            }
+            Diff::ExternalChannel(name, action) => {
+                let path = format!("channels/{}", name);
+                match action {
+                    Action::Add(channel) => {
+                        channel.serialize(ser)?;
+                        self.channels.insert(name, channel);
+                    }
+                    Action::Remove => {
+                        self.channels.remove(&name);
+                        ser.serialize_none()?;
+                    }
+                };
+                Ok(path)
+            }
+            Diff::InternalUser(uid, diff) => {
+                let name = self.users.get_mut(&uid).unwrap().update(diff, ser)?;
+                Ok(format!("users/{}/{}", uid, name))
+            }
+            Diff::InternalChannel(cname, diff) => {
+                let name = self.channels.get_mut(&cname).unwrap().update(diff, ser)?;
+                Ok(format!("users/{}/{}", cname, name))
+            }
+        }
     }
 
     /// Find a user by its ID.

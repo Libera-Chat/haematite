@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use linked_hash_set::LinkedHashSet;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 
 use super::topic::Topic;
 use crate::irc::membership::{Diff as MembershipDiff, Membership};
@@ -24,10 +24,20 @@ impl Channel {
         Self::default()
     }
 
-    pub fn update(&mut self, diff: Diff) {
+    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<String, S::Error>
+    where
+        S: Serializer,
+    {
         match diff {
-            Diff::Topic(topic) => self.topic = topic,
-            Diff::User(uid, diff) => self.users.get_mut(&uid).unwrap().update(diff),
-        };
+            Diff::Topic(topic) => {
+                self.topic = topic;
+                self.topic.serialize(ser)?;
+                Ok("topic".to_owned())
+            }
+            Diff::User(uid, diff) => {
+                let name = self.users.get_mut(&uid).unwrap().update(diff, ser)?;
+                Ok(format!("{}/{}", uid, name))
+            }
+        }
     }
 }

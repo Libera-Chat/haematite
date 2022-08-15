@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use std::collections::HashSet;
 
 #[derive(Default, Serialize)]
@@ -56,17 +56,45 @@ impl User {
         }
     }
 
-    pub fn update(&mut self, diff: Diff) {
-        match diff {
-            Diff::Nick(nick) => self.nick = nick,
-            Diff::User(user) => self.user = user,
-            Diff::Host(host) => self.host = host,
-            Diff::Mode(char, action) => drop(match action {
-                Action::Add(_) => self.modes.insert(char),
-                Action::Remove => self.modes.remove(&char),
-            }),
-            Diff::Oper(oper) => self.oper = oper,
-            Diff::Away(away) => self.away = away,
+    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<String, S::Error>
+    where
+        S: Serializer,
+    {
+        let name = match diff {
+            Diff::Nick(nick) => {
+                self.nick = nick;
+                self.nick.serialize(ser)?;
+                "nick"
+            }
+            Diff::User(user) => {
+                self.user = user;
+                self.user.serialize(ser)?;
+                "user"
+            }
+            Diff::Host(host) => {
+                self.host = host;
+                self.host.serialize(ser)?;
+                "host"
+            }
+            Diff::Mode(char, action) => {
+                match action {
+                    Action::Add(_) => self.modes.insert(char),
+                    Action::Remove => self.modes.remove(&char),
+                };
+                self.modes.serialize(ser)?;
+                "modes"
+            }
+            Diff::Oper(oper) => {
+                self.oper = oper;
+                self.oper.serialize(ser)?;
+                "oper"
+            }
+            Diff::Away(away) => {
+                self.away = away;
+                self.away.serialize(ser)?;
+                "away"
+            }
         };
+        Ok(name.to_owned())
     }
 }

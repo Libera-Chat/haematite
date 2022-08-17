@@ -1,4 +1,5 @@
 use haematite_models::irc::channel::Diff as ChanDiff;
+use haematite_models::irc::error::Error as StateError;
 use haematite_models::irc::hostmask::Hostmask;
 use haematite_models::irc::network::{Diff as NetDiff, Network};
 use haematite_models::irc::topic::{Setter, Topic};
@@ -21,7 +22,7 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
     } else {
         let uid = line.source.as_ref().ok_or(Error::MissingSource)?.decode();
 
-        let user = network.get_user(&uid)?;
+        let user = network.users.get(&uid).ok_or(StateError::UnknownUser)?;
         let hostmask = Hostmask {
             nick: user.nick.clone(),
             user: user.user.clone(),

@@ -1,4 +1,5 @@
 use haematite_models::irc::channel::{Action as ChanAction, Diff as ChanDiff};
+use haematite_models::irc::error::Error as StateError;
 use haematite_models::irc::network::{Action as NetAction, Diff as NetDiff, Network};
 use haematite_models::irc::user::{Action as UserAction, Diff as UserDiff};
 
@@ -12,7 +13,10 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
 
     let uid = line.source.as_ref().ok_or(Error::MissingSource)?.decode();
     let channel_name = line.args[0].decode();
-    let channel = &network.channels[&channel_name];
+    let channel = network
+        .channels
+        .get(&channel_name)
+        .ok_or(StateError::UnknownChannel)?;
 
     let mut diff = vec![NetDiff::InternalUser(
         uid.clone(),

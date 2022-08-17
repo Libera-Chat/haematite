@@ -9,11 +9,6 @@ pub enum Error {
     UnknownServer,
     UnknownUser,
     UnknownMode,
-
-    OverwrittenBan,
-    OverwrittenChannel,
-    OverwrittenServer,
-    OverwrittenUser,
 }
 
 impl<E: SerError> From<E> for Error {

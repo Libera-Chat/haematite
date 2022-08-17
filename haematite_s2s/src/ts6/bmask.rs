@@ -1,4 +1,4 @@
-use haematite_models::irc::channel::{Action as ChanAction, Diff as ChanDiff};
+use haematite_models::irc::channel::{Diff as ChanDiff, ListAction as ChanListAction};
 use haematite_models::irc::network::Diff as NetDiff;
 
 use crate::handler::{Error, Outcome};
@@ -16,7 +16,7 @@ pub fn handle(line: &Line) -> Result<Outcome, Error> {
     for mask in masks_new {
         diff.push(NetDiff::InternalChannel(
             channel_name.clone(),
-            ChanDiff::InternalModeList(mode, ChanAction::Add(mask.decode())),
+            ChanDiff::InternalModeList(mode, ChanListAction::Add(mask.decode())),
         ));
     }
 

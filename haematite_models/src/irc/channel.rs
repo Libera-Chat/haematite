@@ -19,10 +19,15 @@ pub enum Action<T> {
     Remove,
 }
 
+pub enum ListAction<T> {
+    Add(T),
+    Remove(T),
+}
+
 pub enum Diff {
     Topic(Option<Topic>),
     Mode(char, Action<Option<String>>),
-    InternalModeList(char, Action<String>),
+    InternalModeList(char, ListAction<String>),
     ExternalModeList(char, Vec<String>),
     InternalUser(String, MembershipDiff),
     ExternalUser(String, Action<Membership>),
@@ -66,16 +71,18 @@ impl Channel {
             Diff::InternalModeList(mode, action) => {
                 let list = self.mode_lists.get_mut(&mode).ok_or(Error::UnknownMode)?;
                 let (index, value) = match action {
-                    Action::Add(arg) => {
+                    ListAction::Add(arg) => {
                         let value = arg.serialize(ser)?;
                         list.push(arg);
                         (list.len() - 1, value)
                     }
-                    Action::Remove => {
-                        //let index = list.iter().position(|a| a == &arg).unwrap();
-                        //list.remove(index);
-                        //index
-                        (0, ser.serialize_none()?)
+                    ListAction::Remove(arg) => {
+                        let index = list
+                            .iter()
+                            .position(|a| a == &arg)
+                            .ok_or(Error::UnknownItem)?;
+                        list.remove(index);
+                        (index, ser.serialize_none()?)
                     }
                 };
                 (format!("mode_lists/{}/{}", mode, index), value)

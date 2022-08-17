@@ -18,6 +18,7 @@ pub enum Error {
     InvalidProtocol,
     InvalidState,
     MissingSource,
+    MissingArgument,
 }
 
 pub trait Handler {
@@ -69,6 +70,6 @@ impl From<LineError> for Error {
 
 impl From<PairError> for Error {
     fn from(_error: PairError) -> Self {
-        Self::InvalidProtocol
+        Self::MissingArgument
     }
 }

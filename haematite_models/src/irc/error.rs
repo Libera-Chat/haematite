@@ -9,6 +9,7 @@ pub enum Error {
     UnknownServer,
     UnknownUser,
     UnknownMode,
+    UnknownItem,
 }
 
 impl<E: SerError> From<E> for Error {

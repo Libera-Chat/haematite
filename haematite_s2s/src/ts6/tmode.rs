@@ -1,4 +1,6 @@
-use haematite_models::irc::channel::{Action as ChanAction, Diff as ChanDiff};
+use haematite_models::irc::channel::{
+    Action as ChanAction, Diff as ChanDiff, ListAction as ChanListAction,
+};
 use haematite_models::irc::network::Diff as NetDiff;
 
 use super::util::mode::to_changes;
@@ -27,14 +29,19 @@ pub fn handle(line: &Line) -> Result<Outcome, Error> {
                     ChanAction::Add(arg)
                 },
             ),
-            ArgType::Many => ChanDiff::InternalModeList(
-                change.mode,
-                if change.remove {
-                    ChanAction::Remove
-                } else {
-                    ChanAction::Add(arg.unwrap())
-                },
-            ),
+            ArgType::Many => {
+                // this shouldn't possibly be None; `pair_args` should have
+                // already thrown this
+                let arg = arg.ok_or(Error::MissingArgument)?;
+                ChanDiff::InternalModeList(
+                    change.mode,
+                    if change.remove {
+                        ChanListAction::Remove(arg)
+                    } else {
+                        ChanListAction::Add(arg)
+                    },
+                )
+            }
         };
 
         diff.push(NetDiff::InternalChannel(channel_name.clone(), mode_diff));

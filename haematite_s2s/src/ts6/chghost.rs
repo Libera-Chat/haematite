@@ -1,15 +1,15 @@
-use haematite_models::irc::network::Network;
+use haematite_models::irc::network::Diff as NetDiff;
+use haematite_models::irc::user::Diff as UserDiff;
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::util::DecodeHybrid as _;
 
-pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
+pub fn handle(line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 2)?;
 
-    let uid = line.args[0].decode();
-    let user = network.get_user_mut(&uid)?;
-    user.host = line.args[1].decode();
-
-    Ok(Outcome::Empty)
+    Ok(Outcome::State(vec![NetDiff::InternalUser(
+        line.args[0].decode(),
+        UserDiff::Host(line.args[1].decode()),
+    )]))
 }

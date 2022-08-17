@@ -1,9 +1,9 @@
+use super::error::Error;
 use serde::{Serialize, Serializer};
-use std::collections::HashSet;
 
 #[derive(Default, Serialize)]
 pub struct Membership {
-    pub status: HashSet<char>,
+    pub status: Vec<char>,
 }
 
 pub enum Action {
@@ -19,19 +19,29 @@ impl Membership {
         Self::default()
     }
 
-    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<String, S::Error>
+    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(String, S::Ok), Error>
     where
         S: Serializer,
     {
-        match diff {
+        Ok(match diff {
             Diff::Status(char, action) => {
-                match action {
-                    Action::Add => self.status.insert(char),
-                    Action::Remove => self.status.remove(&char),
+                let (index, value) = match action {
+                    Action::Add => {
+                        self.status.push(char);
+                        (self.status.len() - 1, char.serialize(ser)?)
+                    }
+                    Action::Remove => {
+                        let index = self
+                            .status
+                            .iter()
+                            .position(|&c| c == char)
+                            .ok_or(Error::UnknownMode)?;
+                        self.status.remove(index);
+                        (index, ser.serialize_none()?)
+                    }
                 };
-                self.status.serialize(ser)?;
-                Ok("status".to_owned())
+                (format!("status/{}", index), value)
             }
-        }
+        })
     }
 }

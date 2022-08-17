@@ -1,14 +1,12 @@
 use std::collections::HashSet;
 
-use haematite_models::irc::network::Network;
-
 use super::{TS6Handler, CAPABS};
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::util::DecodeHybrid;
 
 //CAPAB :BAN CHW CLUSTER EBMASK ECHO ENCAP EOPMOD EUID EX IE KLN KNOCK MLOCK QS RSFNC SAVE SERVICES TB UNKLN
-pub fn handle(ts6: &mut TS6Handler, _network: &mut Network, line: &Line) -> Result<Outcome, Error> {
+pub fn handle(ts6: &mut TS6Handler, line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 1)?;
 
     let uplink_capabs: HashSet<String> = line.args[0]

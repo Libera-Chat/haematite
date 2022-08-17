@@ -18,7 +18,7 @@ pub fn handle(line: &Line) -> Result<Outcome, Error> {
             deopered |= mode == 'o';
             UserAction::Remove
         } else {
-            UserAction::Add(())
+            UserAction::Add
         };
 
         diff.push(NetDiff::InternalUser(

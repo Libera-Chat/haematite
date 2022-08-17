@@ -1,4 +1,5 @@
-use haematite_models::irc::network::Network;
+use haematite_models::irc::network::{Action as NetAction, Diff as NetDiff};
+use haematite_models::irc::server::{Action as ServAction, Diff as ServDiff};
 use haematite_models::irc::user::User;
 
 use crate::handler::{Error, Outcome};
@@ -6,9 +7,7 @@ use crate::line::Line;
 use crate::util::mode::split_chars;
 use crate::util::DecodeHybrid as _;
 
-use super::util::state::add_user;
-
-pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
+pub fn handle(line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 11)?;
 
     let sid = line.source.as_ref().ok_or(Error::MissingSource)?.decode();
@@ -31,13 +30,14 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
         rdns => Some(rdns.decode()),
     };
 
-    let mut user = User::new(nick, user, host, real, account, ip, rdns, sid);
+    let mut user = User::new(nick, user, host, real, account, ip, rdns, sid.clone());
 
     for (mode, _) in split_chars(&line.args[3].decode()) {
-        user.modes.insert(mode);
+        user.modes.push(mode);
     }
 
-    add_user(network, uid, user)?;
-
-    Ok(Outcome::Empty)
+    Ok(Outcome::State(vec![
+        NetDiff::ExternalUser(uid.clone(), NetAction::Add(user)),
+        NetDiff::InternalServer(sid, ServDiff::User(uid, ServAction::Add)),
+    ]))
 }

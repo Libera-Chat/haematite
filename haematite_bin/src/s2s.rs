@@ -84,9 +84,9 @@ pub async fn run(
         buffer.drain(len - 2..len);
 
         let outcome = {
-            let mut network = network_lock.write().unwrap();
+            let network = network_lock.read().unwrap();
             handler
-                .handle(&mut network, &buffer)
+                .handle(&network, &buffer)
                 .map_err(|e| Error::HandleLine(DecodeHybrid::decode(&buffer), e))?
         };
 

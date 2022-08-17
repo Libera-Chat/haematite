@@ -16,7 +16,7 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
     let channel_name = line.args[0].decode();
     let text = line.args[1].decode();
 
-    let topic = if !text.is_empty() {
+    let topic = if text.is_empty() {
         None
     } else {
         let uid = line.source.as_ref().ok_or(Error::MissingSource)?.decode();

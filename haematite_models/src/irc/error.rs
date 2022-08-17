@@ -13,7 +13,6 @@ pub enum Error {
 
 impl<E: SerError> From<E> for Error {
     fn from(_error: E) -> Self {
-        // placeholder
         Self::Serialize
     }
 }

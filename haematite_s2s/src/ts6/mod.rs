@@ -34,7 +34,7 @@ use crate::line::Line;
 
 const CAPABS: [&str; 19] = [
     "BAN", "CHW", "CLUSTER", "EBMASK", "ECHO", "ENCAP", "EOPMOD", "EUID", "EX", "IE", "KLN",
-    "KNOCK", "MLOCK", "QS", "RSFNC", "SAVE", "SERVICES", "TB", "UNKLN",
+    "KNOCK", "MLOCK", "QS", "RSFNC", "SERVICES", "TB", "UNKLN",
 ];
 
 #[derive(Default)]

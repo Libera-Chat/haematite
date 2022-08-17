@@ -32,7 +32,7 @@ use regex::Regex;
 use crate::handler::{Error, Handler, Outcome};
 use crate::line::Line;
 
-const CAPABS: [&str; 19] = [
+const CAPABS: [&str; 18] = [
     "BAN", "CHW", "CLUSTER", "EBMASK", "ECHO", "ENCAP", "EOPMOD", "EUID", "EX", "IE", "KLN",
     "KNOCK", "MLOCK", "QS", "RSFNC", "SERVICES", "TB", "UNKLN",
 ];

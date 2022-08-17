@@ -30,7 +30,7 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
         };
 
         Some(Topic {
-            text: text,
+            text,
             since: Utc::now().naive_utc(),
             setter: Setter::Hostmask(hostmask),
         })

@@ -37,7 +37,7 @@ pub fn handle(line: &Line) -> Result<Outcome, Error> {
             ),
         };
 
-        diff.push(NetDiff::InternalChannel(channel_name.clone(), mode_diff))
+        diff.push(NetDiff::InternalChannel(channel_name.clone(), mode_diff));
     }
 
     Ok(Outcome::Empty)

@@ -47,6 +47,10 @@ impl Network {
         network
     }
 
+    /// # Errors
+    ///
+    /// Will return `Err` if the presented diff is not applicable to the
+    /// current network state, or if the result data cannot be serialized.
     pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(String, S::Ok), Error>
     where
         S: Serializer,

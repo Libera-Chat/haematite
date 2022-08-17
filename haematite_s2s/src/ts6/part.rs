@@ -24,14 +24,11 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
     )];
 
     if channel.users.is_empty() && !channel.modes.contains_key(&'P') {
-        diff.push(NetDiff::ExternalChannel(
-            channel_name.clone(),
-            NetAction::Remove,
-        ));
+        diff.push(NetDiff::ExternalChannel(channel_name, NetAction::Remove));
     } else {
         diff.push(NetDiff::InternalChannel(
-            channel_name.clone(),
-            ChanDiff::ExternalUser(uid.clone(), ChanAction::Remove),
+            channel_name,
+            ChanDiff::ExternalUser(uid, ChanAction::Remove),
         ));
     }
 

@@ -99,7 +99,7 @@ pub async fn run(
                 for diff in diffs {
                     let (path, value) = network.update(diff, Serializer).unwrap();
 
-                    println!("{} {}", path.color(Color::Blue), value.to_string());
+                    println!("{} {}", path.color(Color::Blue), value);
                 }
             }
             Outcome::Response(responses) => {
@@ -108,7 +108,7 @@ pub async fn run(
                     send(&mut socket_w, &response).await?;
                 }
             }
-            _ => println!("< {}", printable),
+            Outcome::Empty => println!("< {}", printable),
         };
 
         buffer.clear();

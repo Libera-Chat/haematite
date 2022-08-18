@@ -1,6 +1,4 @@
-use std::time::Duration;
-
-use chrono::NaiveDateTime;
+use chrono::{Duration as ChronoDuration, NaiveDateTime, Utc};
 use haematite_models::irc::ban::Ban;
 use haematite_models::irc::hostmask::{Error as HostmaskError, Hostmask};
 use haematite_models::irc::network::{Action as NetAction, Diff as NetDiff};
@@ -38,29 +36,40 @@ pub fn handle(line: &Line) -> Result<Outcome, Error> {
         return Err(Error::InvalidArgument);
     }
 
+    let since = NaiveDateTime::from_timestamp(
+        line.args[3]
+            .decode()
+            .parse::<i64>()
+            .map_err(|_| Error::InvalidArgument)?,
+        0,
+    );
+
+    let duration = ChronoDuration::seconds(
+        line.args[4]
+            .decode()
+            .parse::<i64>()
+            .map_err(|_| Error::InvalidArgument)?,
+    );
+
     let mask = format!("{}@{}", line.args[1].decode(), line.args[2].decode());
-    let since = line.args[3].decode();
-    let duration = line.args[4].decode();
-    let setter = parse_oper(line.args[6].decode().as_str()).map_err(|_| Error::InvalidArgument)?;
-    let reason = line.args[7].decode();
 
-    let ban = Ban {
-        reason,
-        since: NaiveDateTime::from_timestamp(
-            since.parse::<i64>().map_err(|_| Error::InvalidArgument)?,
-            0,
-        ),
-        duration: Duration::from_secs(
-            duration
-                .parse::<u64>()
-                .map_err(|_| Error::InvalidArgument)?,
-        ),
-        setter,
-    };
-
-    let action = if duration == *"0" {
+    let action = if duration.is_zero() {
         NetAction::Remove
+    } else if since + duration < Utc::now().naive_utc() {
+        // expired
+        return Ok(Outcome::Empty);
     } else {
+        let setter =
+            parse_oper(line.args[6].decode().as_str()).map_err(|_| Error::InvalidArgument)?;
+        let reason = line.args[7].decode();
+
+        let ban = Ban {
+            reason,
+            since,
+            duration: duration.to_std().map_err(|_| Error::InvalidArgument)?,
+            setter,
+        };
+
         NetAction::Add(ban)
     };
 

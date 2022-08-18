@@ -3,13 +3,13 @@ use std::time::Duration;
 use chrono::NaiveDateTime;
 use haematite_models::irc::ban::Ban;
 use haematite_models::irc::hostmask::{Error as HostmaskError, Hostmask};
-use haematite_models::irc::network::{Error as StateError, Network};
+use haematite_models::irc::network::{Action as NetAction, Diff as NetDiff};
 use haematite_models::irc::oper::Oper;
 use regex::Regex;
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
-use crate::util::{DecodeHybrid as _, NoneOr as _};
+use crate::util::DecodeHybrid as _;
 
 fn parse_oper(mut oper: &str) -> Result<Oper, HostmaskError> {
     //TODO: precompile this
@@ -30,21 +30,20 @@ fn parse_oper(mut oper: &str) -> Result<Oper, HostmaskError> {
     })
 }
 
-pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
+pub fn handle(line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 8)?;
 
-    let btype = line.args[0][0] as char;
-    let mask = match btype {
-        'K' => format!("{}@{}", line.args[1].decode(), line.args[2].decode()),
-        // throw or something instead. only expecting K here
-        _ => "asd".to_string(),
-    };
+    if line.args[0][0] != b'K' {
+        // we only expect k-lines in BAN
+        return Err(Error::InvalidArgument);
+    }
+
+    let mask = format!("{}@{}", line.args[1].decode(), line.args[2].decode());
     let since = line.args[3].decode();
     let duration = line.args[4].decode();
     let setter = parse_oper(line.args[6].decode().as_str()).map_err(|_| Error::InvalidArgument)?;
     let reason = line.args[7].decode();
 
-    let bans = network.bans.entry(btype).or_insert_with(Default::default);
     let ban = Ban {
         reason,
         since: NaiveDateTime::from_timestamp(
@@ -59,11 +58,11 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
         setter,
     };
 
-    if duration == *"0" {
-        bans.remove(&mask).ok_or(StateError::UnknownBan)?;
+    let action = if duration == *"0" {
+        NetAction::Remove
     } else {
-        bans.insert(mask, ban).none_or(StateError::OverwrittenBan)?;
+        NetAction::Add(ban)
     };
 
-    Ok(Outcome::Empty)
+    Ok(Outcome::State(vec![NetDiff::Ban(mask, action)]))
 }

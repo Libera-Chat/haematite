@@ -1,5 +1,6 @@
 use haematite_models::config::{Config, Error as ConfigError};
-use haematite_models::irc::network::{Error as StateError, Network};
+use haematite_models::irc::error::Error as StateError;
+use haematite_models::irc::network::{Diff, Network};
 
 use crate::line::Error as LineError;
 use crate::util::mode::PairError;
@@ -8,6 +9,7 @@ pub enum Outcome {
     Unhandled,
     Empty,
     Response(Vec<String>),
+    State(Vec<Diff>),
 }
 
 #[derive(Debug)]
@@ -16,6 +18,7 @@ pub enum Error {
     InvalidProtocol,
     InvalidState,
     MissingSource,
+    MissingArgument,
 }
 
 pub trait Handler {
@@ -50,7 +53,7 @@ pub trait Handler {
     /// # Errors
     ///
     /// Errors if a line cannot be handled.
-    fn handle(&mut self, network: &mut Network, line: &[u8]) -> Result<Outcome, Error>;
+    fn handle(&mut self, network: &Network, line: &[u8]) -> Result<Outcome, Error>;
 }
 
 impl From<StateError> for Error {
@@ -67,6 +70,6 @@ impl From<LineError> for Error {
 
 impl From<PairError> for Error {
     fn from(_error: PairError) -> Self {
-        Self::InvalidProtocol
+        Self::MissingArgument
     }
 }

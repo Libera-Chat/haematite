@@ -1,24 +1,24 @@
-use haematite_models::irc::network::Network;
+use haematite_models::irc::channel::{Diff as ChanDiff, ListAction as ChanListAction};
+use haematite_models::irc::network::Diff as NetDiff;
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::util::DecodeHybrid as _;
 
-pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
+pub fn handle(line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 4)?;
 
-    let channel = network.get_channel_mut(&line.args[1].decode())?;
+    let channel_name = line.args[1].decode();
     let mode = line.args[2][0] as char;
     let masks_new = line.args[3].split(|c| c == &b' ');
 
-    let masks = channel
-        .mode_lists
-        .entry(mode)
-        .or_insert_with(Default::default);
-
+    let mut diff = Vec::new();
     for mask in masks_new {
-        masks.insert(mask.decode());
+        diff.push(NetDiff::InternalChannel(
+            channel_name.clone(),
+            ChanDiff::InternalModeList(mode, ChanListAction::Add(mask.decode())),
+        ));
     }
 
-    Ok(Outcome::Empty)
+    Ok(Outcome::State(diff))
 }

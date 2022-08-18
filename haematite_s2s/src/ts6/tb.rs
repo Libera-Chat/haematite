@@ -1,6 +1,7 @@
 use chrono::NaiveDateTime;
+use haematite_models::irc::channel::Diff as ChanDiff;
 use haematite_models::irc::hostmask::Hostmask;
-use haematite_models::irc::network::Network;
+use haematite_models::irc::network::Diff as NetDiff;
 use haematite_models::irc::topic::{Setter, Topic};
 
 use crate::handler::{Error, Outcome};
@@ -8,10 +9,10 @@ use crate::line::Line;
 use crate::util::DecodeHybrid as _;
 
 //:420 TB #gaynet 1640815950 jess!~jess@husky.vpn.lolnerd.net :gay stuff itc
-pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
+pub fn handle(line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 4..)?;
 
-    let channel = network.get_channel_mut(&line.args[0].decode())?;
+    let channel_name = line.args[0].decode();
     let since = line.args[1]
         .decode()
         .parse::<i64>()
@@ -29,7 +30,9 @@ pub fn handle(network: &mut Network, line: &Line) -> Result<Outcome, Error> {
         //TODO: handle missing setter
         setter,
     };
-    channel.topic = Some(topic);
 
-    Ok(Outcome::Empty)
+    Ok(Outcome::State(vec![NetDiff::InternalChannel(
+        channel_name,
+        ChanDiff::Topic(Some(topic)),
+    )]))
 }

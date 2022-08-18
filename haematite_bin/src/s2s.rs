@@ -7,6 +7,7 @@ use haematite_models::irc::network::Network;
 use haematite_s2s::handler::{Error as HandlerError, Handler, Outcome};
 use haematite_s2s::DecodeHybrid;
 use rustls::client::InvalidDnsNameError;
+use serde_json::value::Serializer;
 use tokio::io::{split, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
 use tokio_rustls::TlsConnector;
@@ -83,24 +84,32 @@ pub async fn run(
         buffer.drain(len - 2..len);
 
         let outcome = {
-            let mut network = network_lock.write().unwrap();
+            let network = network_lock.read().unwrap();
             handler
-                .handle(&mut network, &buffer)
+                .handle(&network, &buffer)
                 .map_err(|e| Error::HandleLine(DecodeHybrid::decode(&buffer), e))?
         };
 
         let printable = DecodeHybrid::decode(&buffer);
-        let printable = match outcome {
-            Outcome::Unhandled => printable.color(Color::Red),
-            _ => printable.normal(),
-        };
-        println!("< {}", printable);
+        match outcome {
+            Outcome::Unhandled => println!("< {}", printable.color(Color::Red)),
+            Outcome::State(diffs) => {
+                println!("< {}", printable);
+                let mut network = network_lock.write().unwrap();
+                for diff in diffs {
+                    let (path, value) = network.update(diff, Serializer).unwrap();
 
-        if let Outcome::Response(resps) = outcome {
-            for resp in resps {
-                send(&mut socket_w, &resp).await?;
+                    println!("{} {}", path.color(Color::Blue), value);
+                }
             }
-        }
+            Outcome::Response(responses) => {
+                println!("< {}", printable);
+                for response in responses {
+                    send(&mut socket_w, &response).await?;
+                }
+            }
+            Outcome::Empty => println!("< {}", printable),
+        };
 
         buffer.clear();
     }

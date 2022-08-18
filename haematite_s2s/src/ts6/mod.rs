@@ -8,6 +8,7 @@ mod euid;
 mod join;
 mod kill;
 mod mode;
+mod nick;
 mod oper;
 mod part;
 mod pass;
@@ -81,31 +82,32 @@ impl Handler for TS6Handler {
         ])
     }
 
-    fn handle(&mut self, network: &mut Network, line: &[u8]) -> Result<Outcome, Error> {
+    fn handle(&mut self, network: &Network, line: &[u8]) -> Result<Outcome, Error> {
         let line = Line::try_from_rfc1459(line)?;
 
         match line.command.as_slice() {
-            b"AWAY" => away::handle(network, &line),
-            b"BAN" => ban::handle(network, &line),
-            b"BMASK" => bmask::handle(network, &line),
-            b"CAPAB" => capab::handle(self, network, &line),
-            b"CHGHOST" => chghost::handle(network, &line),
-            b"ENCAP" => encap::handle(network, &line),
-            b"EUID" => euid::handle(network, &line),
-            b"JOIN" => join::handle(network, &line),
+            b"AWAY" => away::handle(&line),
+            b"BAN" => ban::handle(&line),
+            b"BMASK" => bmask::handle(&line),
+            b"CAPAB" => capab::handle(self, &line),
+            b"CHGHOST" => chghost::handle(&line),
+            b"ENCAP" => encap::handle(&line),
+            b"EUID" => euid::handle(&line),
+            b"JOIN" => join::handle(&line),
             b"KILL" => kill::handle(network, &line),
-            b"MODE" => mode::handle(network, &line),
-            b"OPER" => oper::handle(network, &line),
+            b"MODE" => mode::handle(&line),
+            b"NICK" => nick::handle(&line),
+            b"OPER" => oper::handle(&line),
             b"PART" => part::handle(network, &line),
-            b"PASS" => pass::handle(self, network, &line),
+            b"PASS" => pass::handle(self, &line),
             b"PING" => ping::handle(network, &line),
             b"QUIT" => quit::handle(network, &line),
-            b"SERVER" => server::handle(self, network, &line),
-            b"SID" => sid::handle(network, &line),
+            b"SERVER" => server::handle(self, &line),
+            b"SID" => sid::handle(&line),
             b"SJOIN" => sjoin::handle(network, &line),
             b"SQUIT" => squit::handle(network, &line),
-            b"TB" => tb::handle(network, &line),
-            b"TMODE" => tmode::handle(network, &line),
+            b"TB" => tb::handle(&line),
+            b"TMODE" => tmode::handle(&line),
             b"TOPIC" => topic::handle(network, &line),
             _ => Ok(Outcome::Unhandled),
         }

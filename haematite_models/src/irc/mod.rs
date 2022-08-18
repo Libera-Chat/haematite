@@ -1,6 +1,8 @@
 pub mod ban;
 pub mod channel;
+pub mod error;
 pub mod hostmask;
+pub mod membership;
 pub mod network;
 pub mod oper;
 pub mod server;

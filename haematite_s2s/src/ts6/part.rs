@@ -3,6 +3,7 @@ use haematite_models::irc::error::Error as StateError;
 use haematite_models::irc::network::{Action as NetAction, Diff as NetDiff, Network};
 use haematite_models::irc::user::{Action as UserAction, Diff as UserDiff};
 
+use super::util::channel::{ForgetContext, Forgettable as _};
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::util::DecodeHybrid as _;
@@ -23,7 +24,7 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
         UserDiff::Channel(channel_name.clone(), UserAction::Add),
     )];
 
-    if channel.users.is_empty() && !channel.modes.contains_key(&'P') {
+    if channel.is_forgettable(ForgetContext::Leave(1)) {
         diff.push(NetDiff::ExternalChannel(channel_name, NetAction::Remove));
     } else {
         diff.push(NetDiff::InternalChannel(

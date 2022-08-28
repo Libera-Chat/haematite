@@ -1,7 +1,7 @@
-use haematite_models::irc::channel::{
-    Action as ChanAction, Diff as ChanDiff, ListAction as ChanListAction,
-};
-use haematite_models::irc::network::Diff as NetDiff;
+use chrono::Utc;
+use haematite_models::irc::channel::{Action as ChanAction, Diff as ChanDiff, ModeMetadata};
+use haematite_models::irc::error::Error as StateError;
+use haematite_models::irc::network::{Diff as NetDiff, Network};
 
 use super::util::mode::to_changes;
 use crate::handler::{Error, Outcome};
@@ -10,8 +10,11 @@ use crate::util::mode::{pair_args, split_chars, ArgType};
 use crate::util::DecodeHybrid;
 
 //:420AAAAAB TMODE 1658071342 #test +bbb a!*@* b!*@* c!*@*
-pub fn handle(line: &Line) -> Result<Outcome, Error> {
+pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 3..)?;
+
+    let uid = line.source.as_ref().ok_or(Error::MissingSource)?.decode();
+    let setter = network.users.get(&uid).ok_or(StateError::UnknownUser)?;
 
     let channel_name = line.args[1].decode();
     let modes = to_changes(split_chars(&line.args[2].decode()));
@@ -33,12 +36,16 @@ pub fn handle(line: &Line) -> Result<Outcome, Error> {
                 // this shouldn't possibly be None; `pair_args` should have
                 // already thrown this
                 let arg = arg.ok_or(Error::MissingArgument)?;
-                ChanDiff::InternalModeList(
+                ChanDiff::ModeList(
                     change.mode,
+                    arg,
                     if change.remove {
-                        ChanListAction::Remove(arg)
+                        ChanAction::Remove
                     } else {
-                        ChanListAction::Add(arg)
+                        ChanAction::Add(Some(ModeMetadata {
+                            since: Utc::now().naive_utc(),
+                            setter: setter.hostmask(),
+                        }))
                     },
                 )
             }

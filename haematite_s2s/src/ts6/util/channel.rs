@@ -15,7 +15,9 @@ impl Forgettable for Channel {
         }
 
         match context {
-            ForgetContext::Leave(count) => self.users.len() > count.into(),
+            // this could have been `<=` instead of `=`, but if we're trying
+            // to remove more users than we have, there's a bigger problem
+            ForgetContext::Leave(count) => self.users.len() == count.into(),
         }
     }
 }

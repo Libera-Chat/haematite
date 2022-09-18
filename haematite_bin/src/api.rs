@@ -1,14 +1,14 @@
 use std::convert::Infallible;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 use closure::closure;
-use futures::StreamExt as _;
+use futures::{SinkExt as _, StreamExt as _};
 use haematite_api::{Api, Format};
 use haematite_models::config::Config;
 use haematite_models::irc::network::Network;
 use serde_json::Value;
 use tokio::sync::broadcast::Receiver;
-use warp::ws::Ws;
+use warp::ws::{Message, Ws};
 use warp::Filter;
 
 pub async fn run(
@@ -16,6 +16,7 @@ pub async fn run(
     network: Arc<RwLock<Network>>,
     stream: Receiver<(String, Value)>,
 ) -> Result<(), Infallible> {
+    let stream = Arc::new(Mutex::new(stream));
     let api = Arc::new(Api::new(Format::Pretty));
 
     let path_network = warp::path!("rest" / "network").map(closure!(clone network, clone api, || {
@@ -30,12 +31,16 @@ pub async fn run(
         }),
     );
 
-    let path_stream = warp::path("stream").and(warp::ws()).map(|ws1: Ws| {
-        // need to do this :((
-        //let stream = stream.resubscribe();
-        ws1.on_upgrade(|ws2| async {
-            let (tx, mut rx) = ws2.split();
-            while let Some(_message) = rx.next().await {}
+    let path_stream = warp::path("stream").and(warp::ws()).map(move |ws1: Ws| {
+        let mut stream = stream.lock().unwrap().resubscribe();
+        ws1.on_upgrade(|ws2| async move {
+            let (mut tx, rx) = ws2.split();
+
+            while let Ok((path, value)) = stream.recv().await {
+                if let Err(_) = tx.send(Message::text(format!("{} {}", path, value))).await {
+                    break;
+                }
+            }
         })
     });
 

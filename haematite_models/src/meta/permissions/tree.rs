@@ -25,6 +25,13 @@ impl Tree {
             }
         }
 
+        if parents.contains_key("*") {
+            let all = parents["*"].clone();
+            for value in parents.values_mut() {
+                value.append(&mut all.clone());
+            }
+        }
+
         let mut output = HashMap::new();
         for (name, children) in parents {
             output.insert(

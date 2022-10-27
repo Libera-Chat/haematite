@@ -21,7 +21,7 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
 
     let mut diff = vec![NetDiff::InternalUser(
         uid.clone(),
-        UserDiff::Channel(channel_name.clone(), UserAction::Add),
+        UserDiff::Channel(channel_name.clone(), UserAction::Remove),
     )];
 
     if channel.is_forgettable(ForgetContext::Leave(1)) {

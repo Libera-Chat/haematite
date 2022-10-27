@@ -1,4 +1,5 @@
 use super::error::Error;
+use crate::meta::permissions::Path;
 use serde::{Serialize, Serializer};
 
 #[derive(Default, Serialize)]
@@ -23,7 +24,7 @@ impl Membership {
     ///
     /// Will return `Err` if the presented diff is not applicable to the
     /// current network state, or if the result data cannot be serialized.
-    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(String, S::Ok), Error>
+    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(Path, S::Ok), Error>
     where
         S: Serializer,
     {
@@ -44,7 +45,13 @@ impl Membership {
                         (index, ser.serialize_none()?)
                     }
                 };
-                (format!("status/{}", index), value)
+                (
+                    Path::InternalVertex(
+                        "status".to_string(),
+                        Box::new(Path::ExternalVertex(index.to_string())),
+                    ),
+                    value,
+                )
             }
         })
     }

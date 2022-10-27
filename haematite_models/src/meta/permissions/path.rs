@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Path {
     InternalVertex(String, Box<Path>),
     ExternalVertex(String),
@@ -40,6 +40,15 @@ impl Path {
                 }
                 None
             }
+        }
+    }
+}
+
+impl ToString for Path {
+    fn to_string(&self) -> String {
+        match self {
+            Self::InternalVertex(name, child) => format!("{}/{}", name, child.as_ref().to_string()),
+            Self::ExternalVertex(name) => name.clone(),
         }
     }
 }

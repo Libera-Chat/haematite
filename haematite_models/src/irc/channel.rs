@@ -6,6 +6,7 @@ use serde::{Serialize, Serializer};
 use super::error::Error;
 use super::membership::{Diff as MembershipDiff, Membership};
 use super::topic::Topic;
+use crate::meta::permissions::Path;
 
 #[derive(Debug, Serialize)]
 pub struct ModeMetadata {
@@ -49,14 +50,17 @@ impl Channel {
     ///
     /// Will return `Err` if the presented diff is not applicable to the
     /// current network state, or if the result data cannot be serialized.
-    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(String, S::Ok), Error>
+    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(Path, S::Ok), Error>
     where
         S: Serializer,
     {
         Ok(match diff {
             Diff::Topic(topic) => {
                 self.topic = topic;
-                ("topic".to_owned(), self.topic.serialize(ser)?)
+                (
+                    Path::ExternalVertex("topic".to_owned()),
+                    self.topic.serialize(ser)?,
+                )
             }
             Diff::Mode(mode, action) => {
                 let value = match action {
@@ -70,15 +74,20 @@ impl Channel {
                         ser.serialize_none()?
                     }
                 };
-                (format!("modes/{}", mode), value)
+                (
+                    Path::InternalVertex(
+                        "modes".to_string(),
+                        Box::new(Path::ExternalVertex(mode.to_string())),
+                    ),
+                    value,
+                )
             }
             Diff::ModeList(mode, mask, action) => {
-                let path = format!("mode_lists/{}/{}", mode, mask);
                 let map = self.mode_lists.get_mut(&mode).ok_or(Error::UnknownMode)?;
                 let value = match action {
                     Action::Add(arg) => {
                         let value = arg.serialize(ser)?;
-                        map.insert(mask, arg);
+                        map.insert(mask.clone(), arg);
                         value
                     }
                     Action::Remove => {
@@ -86,7 +95,16 @@ impl Channel {
                         ser.serialize_none()?
                     }
                 };
-                (path, value)
+                (
+                    Path::InternalVertex(
+                        "mode_lists".to_string(),
+                        Box::new(Path::InternalVertex(
+                            "mode".to_string(),
+                            Box::new(Path::ExternalVertex(mask)),
+                        )),
+                    ),
+                    value,
+                )
             }
             Diff::InternalUser(uid, diff) => {
                 let (path, value) = self
@@ -94,14 +112,20 @@ impl Channel {
                     .get_mut(&uid)
                     .ok_or(Error::UnknownUser)?
                     .update(diff, ser)?;
-                (format!("users/{}/{}", uid, path), value)
+
+                (
+                    Path::InternalVertex(
+                        "users".to_string(),
+                        Box::new(Path::InternalVertex(uid, Box::new(path))),
+                    ),
+                    value,
+                )
             }
             Diff::ExternalUser(uid, action) => {
-                let path = format!("users/{}", uid);
                 let value = match action {
                     Action::Add(membership) => {
                         let value = membership.serialize(ser)?;
-                        self.users.insert(uid, membership);
+                        self.users.insert(uid.clone(), membership);
                         value
                     }
                     Action::Remove => {
@@ -109,7 +133,10 @@ impl Channel {
                         ser.serialize_none()?
                     }
                 };
-                (path, value)
+                (
+                    Path::InternalVertex("users".to_string(), Box::new(Path::ExternalVertex(uid))),
+                    value,
+                )
             }
         })
     }

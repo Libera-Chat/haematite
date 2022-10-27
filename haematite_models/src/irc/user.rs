@@ -1,4 +1,5 @@
 use super::error::Error;
+use crate::meta::permissions::Path;
 use serde::{Serialize, Serializer};
 
 #[derive(Default, Serialize)]
@@ -66,26 +67,38 @@ impl User {
     ///
     /// Will return `Err` if the presented diff is not applicable to the
     /// current network state, or if the result data cannot be serialized.
-    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(String, S::Ok), Error>
+    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(Path, S::Ok), Error>
     where
         S: Serializer,
     {
         Ok(match diff {
             Diff::Nick(nick) => {
                 self.nick = nick;
-                ("nick".to_owned(), self.nick.serialize(ser)?)
+                (
+                    Path::ExternalVertex("nick".to_owned()),
+                    self.nick.serialize(ser)?,
+                )
             }
             Diff::User(user) => {
                 self.user = user;
-                ("user".to_owned(), self.user.serialize(ser)?)
+                (
+                    Path::ExternalVertex("user".to_owned()),
+                    self.user.serialize(ser)?,
+                )
             }
             Diff::Host(host) => {
                 self.host = host;
-                ("host".to_owned(), self.host.serialize(ser)?)
+                (
+                    Path::ExternalVertex("host".to_owned()),
+                    self.host.serialize(ser)?,
+                )
             }
             Diff::Account(account) => {
                 self.account = account;
-                ("account".to_owned(), self.account.serialize(ser)?)
+                (
+                    Path::ExternalVertex("account".to_owned()),
+                    self.account.serialize(ser)?,
+                )
             }
             Diff::Mode(char, action) => {
                 let (index, value) = match action {
@@ -103,15 +116,27 @@ impl User {
                         (index, ser.serialize_none()?)
                     }
                 };
-                (format!("modes/{}", index), value)
+                (
+                    Path::InternalVertex(
+                        "modes".to_owned(),
+                        Box::new(Path::ExternalVertex(index.to_string())),
+                    ),
+                    value,
+                )
             }
             Diff::Oper(oper) => {
                 self.oper = oper;
-                ("oper".to_owned(), self.oper.serialize(ser)?)
+                (
+                    Path::ExternalVertex("oper".to_owned()),
+                    self.oper.serialize(ser)?,
+                )
             }
             Diff::Away(away) => {
                 self.away = away;
-                ("away".to_owned(), self.away.serialize(ser)?)
+                (
+                    Path::ExternalVertex("away".to_owned()),
+                    self.away.serialize(ser)?,
+                )
             }
             Diff::Channel(name, action) => {
                 let (index, value) = match action {
@@ -130,7 +155,13 @@ impl User {
                         (index, ser.serialize_none()?)
                     }
                 };
-                (format!("channels/{}", index), value)
+                (
+                    Path::InternalVertex(
+                        "channels".to_owned(),
+                        Box::new(Path::ExternalVertex(index.to_string())),
+                    ),
+                    value,
+                )
             }
         })
     }

@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_lines)]
 use std::collections::HashMap;
 
 use linked_hash_map::LinkedHashMap;
@@ -8,6 +9,7 @@ use super::channel::{Channel, Diff as ChannelDiff};
 use super::error::Error;
 use super::server::{Diff as ServerDiff, Server};
 use super::user::{Diff as UserDiff, User};
+use crate::meta::permissions::Path;
 
 #[derive(Default, Serialize)]
 pub struct Network {
@@ -51,17 +53,16 @@ impl Network {
     ///
     /// Will return `Err` if the presented diff is not applicable to the
     /// current network state, or if the result data cannot be serialized.
-    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(String, S::Ok), Error>
+    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(Path, S::Ok), Error>
     where
         S: Serializer,
     {
         Ok(match diff {
             Diff::Ban(mask, action) => {
-                let path = format!("bans/{}", mask);
                 let value = match action {
                     Action::Add(ban) => {
                         let value = ban.serialize(ser)?;
-                        self.bans.insert(mask, ban);
+                        self.bans.insert(mask.clone(), ban);
                         value
                     }
                     Action::Remove => {
@@ -69,15 +70,17 @@ impl Network {
                         ser.serialize_none()?
                     }
                 };
-                (path, value)
+                (
+                    Path::InternalVertex("bans".to_string(), Box::new(Path::ExternalVertex(mask))),
+                    value,
+                )
             }
 
             Diff::ExternalServer(name, action) => {
-                let path = format!("servers/{}", name);
                 let value = match action {
                     Action::Add(server) => {
                         let value = server.serialize(ser)?;
-                        self.servers.insert(name, server);
+                        self.servers.insert(name.clone(), server);
                         value
                     }
                     Action::Remove => {
@@ -85,7 +88,13 @@ impl Network {
                         ser.serialize_none()?
                     }
                 };
-                (path, value)
+                (
+                    Path::InternalVertex(
+                        "servers".to_string(),
+                        Box::new(Path::ExternalVertex(name)),
+                    ),
+                    value,
+                )
             }
             Diff::InternalServer(name, diff) => {
                 let (path, value) = self
@@ -93,15 +102,20 @@ impl Network {
                     .get_mut(&name)
                     .ok_or(Error::UnknownServer)?
                     .update(diff, ser)?;
-                (format!("servers/{}/{}", name, path), value)
+                (
+                    Path::InternalVertex(
+                        "servers".to_string(),
+                        Box::new(Path::InternalVertex(name, Box::new(path))),
+                    ),
+                    value,
+                )
             }
 
             Diff::ExternalUser(uid, action) => {
-                let path = format!("users/{}", uid);
                 let value = match action {
                     Action::Add(user) => {
                         let value = user.serialize(ser)?;
-                        self.users.insert(uid, user);
+                        self.users.insert(uid.clone(), user);
                         value
                     }
                     Action::Remove => {
@@ -109,7 +123,10 @@ impl Network {
                         ser.serialize_none()?
                     }
                 };
-                (path, value)
+                (
+                    Path::InternalVertex("users".to_string(), Box::new(Path::ExternalVertex(uid))),
+                    value,
+                )
             }
             Diff::InternalUser(uid, diff) => {
                 let (path, value) = self
@@ -117,15 +134,20 @@ impl Network {
                     .get_mut(&uid)
                     .ok_or(Error::UnknownUser)?
                     .update(diff, ser)?;
-                (format!("users/{}/{}", uid, path), value)
+                (
+                    Path::InternalVertex(
+                        "users".to_string(),
+                        Box::new(Path::InternalVertex(uid, Box::new(path))),
+                    ),
+                    value,
+                )
             }
 
             Diff::ExternalChannel(name, action) => {
-                let path = format!("channels/{}", name);
                 let value = match action {
                     Action::Add(channel) => {
                         let value = channel.serialize(ser)?;
-                        self.channels.insert(name, channel);
+                        self.channels.insert(name.clone(), channel);
                         value
                     }
                     Action::Remove => {
@@ -133,7 +155,13 @@ impl Network {
                         ser.serialize_none()?
                     }
                 };
-                (path, value)
+                (
+                    Path::InternalVertex(
+                        "channels".to_string(),
+                        Box::new(Path::ExternalVertex(name)),
+                    ),
+                    value,
+                )
             }
             Diff::InternalChannel(name, diff) => {
                 let (path, value) = self
@@ -141,7 +169,10 @@ impl Network {
                     .get_mut(&name)
                     .ok_or(Error::UnknownChannel)?
                     .update(diff, ser)?;
-                (format!("users/{}/{}", name, path), value)
+                (
+                    Path::InternalVertex("channels".to_string(), Box::new(path)),
+                    value,
+                )
             }
         })
     }

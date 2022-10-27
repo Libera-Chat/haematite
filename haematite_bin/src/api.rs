@@ -13,11 +13,12 @@ use haematite_api::{Api, Format};
 use haematite_dal::Database;
 use haematite_models::config::Config;
 use haematite_models::irc::network::Network;
+use haematite_models::meta::permissions::Path;
 
 pub async fn run<D: SqlxDatabase>(
     config: &Config,
     network: Arc<RwLock<Network>>,
-    stream: Receiver<(String, Value)>,
+    stream: Receiver<(Path, Value)>,
     database: Arc<Database<D>>,
 ) -> Result<(), Infallible> {
     let stream = Arc::new(Mutex::new(stream));
@@ -47,7 +48,7 @@ pub async fn run<D: SqlxDatabase>(
 
                 while let Ok((path, value)) = stream.recv().await {
                     if tx
-                        .send(Message::text(format!("{} {}", path, value)))
+                        .send(Message::text(format!("{} {}", path.to_string(), value)))
                         .await
                         .is_err()
                     {

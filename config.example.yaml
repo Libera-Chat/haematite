@@ -12,3 +12,6 @@ uplink:
 tls:
   crt: .ca/pki/issued/husky.vpn.lolnerd.net.crt
   key: .ca/pki/private/husky.vpn.lolnerd.net.key
+
+bind: "[fd84:9d71:8b8:1::1]:8085"
+database: postgress:///jess

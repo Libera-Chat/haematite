@@ -1,0 +1,11 @@
+[package]
+name = "haematite_dal"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+haematite_models = { path = "../haematite_models" }
+
+sqlx = { version = "0.6.2", features = ["runtime-tokio-rustls"] }

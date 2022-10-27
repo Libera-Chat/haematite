@@ -3,18 +3,22 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use closure::closure;
 use futures::{SinkExt as _, StreamExt as _};
-use haematite_api::{Api, Format};
-use haematite_models::config::Config;
-use haematite_models::irc::network::Network;
 use serde_json::Value;
+use sqlx::Database as SqlxDatabase;
 use tokio::sync::broadcast::Receiver;
 use warp::ws::{Message, Ws};
 use warp::Filter;
 
-pub async fn run(
+use haematite_api::{Api, Format};
+use haematite_dal::Database;
+use haematite_models::config::Config;
+use haematite_models::irc::network::Network;
+
+pub async fn run<D: SqlxDatabase>(
     config: &Config,
     network: Arc<RwLock<Network>>,
     stream: Receiver<(String, Value)>,
+    database: Arc<Database<D>>,
 ) -> Result<(), Infallible> {
     let stream = Arc::new(Mutex::new(stream));
     let api = Arc::new(Api::new(Format::Pretty));
@@ -31,18 +35,27 @@ pub async fn run(
         }),
     );
 
-    let path_stream = warp::path("stream").and(warp::ws()).map(move |ws1: Ws| {
-        let mut stream = stream.lock().unwrap().resubscribe();
-        ws1.on_upgrade(|ws2| async move {
-            let (mut tx, rx) = ws2.split();
+    let path_stream = warp::path("stream")
+        .and(warp::path!(String))
+        .and(warp::ws())
+        .map(move |access_token: String, ws1: Ws| {
+            let _user = database.user_store.access_token(&access_token);
 
-            while let Ok((path, value)) = stream.recv().await {
-                if let Err(_) = tx.send(Message::text(format!("{} {}", path, value))).await {
-                    break;
+            let mut stream = stream.lock().unwrap().resubscribe();
+            ws1.on_upgrade(|ws2| async move {
+                let (mut tx, _rx) = ws2.split();
+
+                while let Ok((path, value)) = stream.recv().await {
+                    if tx
+                        .send(Message::text(format!("{} {}", path, value)))
+                        .await
+                        .is_err()
+                    {
+                        break;
+                    }
                 }
-            }
-        })
-    });
+            })
+        });
 
     warp::serve(path_network.or(path_user).or(path_stream))
         .run(config.bind)

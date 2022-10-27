@@ -14,3 +14,4 @@
 
 pub mod config;
 pub mod irc;
+pub mod meta;

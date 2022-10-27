@@ -25,6 +25,7 @@ pub struct Config {
     pub uplink: Uplink,
     pub tls: Tls,
     pub bind: SocketAddr,
+    pub database: String,
 }
 
 // If thiserror gets added, use that.

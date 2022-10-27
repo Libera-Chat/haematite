@@ -23,12 +23,15 @@ use std::sync::{Arc, RwLock};
 
 use clap::Parser;
 use futures::future::TryFutureExt as _;
+use serde_yaml::from_reader;
+use sqlx::PgPool;
+use tokio::sync::broadcast;
+
+use haematite_dal::Database;
 use haematite_models::config::{Config, Error as ConfigError};
 use haematite_models::irc::network::Network;
 use haematite_s2s::handler::Handler;
 use haematite_s2s::ts6::TS6Handler;
-use serde_yaml::from_reader;
-use tokio::sync::broadcast;
 
 use crate::api::run as run_api;
 use crate::s2s::{run as run_s2s, Error as S2sError};
@@ -80,12 +83,16 @@ async fn main() {
         }
     };
 
+    let database = Arc::new(Database::from(
+        PgPool::connect(&config.database).await.unwrap(),
+    ));
+
     let network = Arc::new(RwLock::new(Network::new(config.server.clone())));
     let (stream_tx, stream_rx) = broadcast::channel(200);
 
     tokio::try_join!(
         run_s2s(&config, Arc::clone(&network), stream_tx, handler).map_err(Error::S2s),
-        run_api(&config, Arc::clone(&network), stream_rx).map_err(Error::Api),
+        run_api(&config, Arc::clone(&network), stream_rx, database).map_err(Error::Api),
     )
     .unwrap();
 }

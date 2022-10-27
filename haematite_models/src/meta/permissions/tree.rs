@@ -51,8 +51,11 @@ impl Tree {
         match self {
             Self::ExternalVertex => None,
             Self::InternalVertex(map) => match path {
-                Path::InternalVertex(name, path) => map.get(name).and_then(|v| v.walk(path)),
-                Path::ExternalVertex(name) => map.get(name),
+                Path::InternalVertex(name, path) => map
+                    .get(name)
+                    .or_else(|| map.get("*"))
+                    .and_then(|v| v.walk(path)),
+                Path::ExternalVertex(name) => map.get(name).or_else(|| map.get("*")),
             },
         }
     }

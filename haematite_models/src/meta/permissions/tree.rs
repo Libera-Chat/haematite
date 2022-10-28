@@ -25,6 +25,13 @@ impl Tree {
             }
         }
 
+        if parents.contains_key("*") {
+            let all = parents["*"].clone();
+            for value in parents.values_mut() {
+                value.append(&mut all.clone());
+            }
+        }
+
         let mut output = HashMap::new();
         for (name, children) in parents {
             output.insert(
@@ -44,8 +51,11 @@ impl Tree {
         match self {
             Self::ExternalVertex => None,
             Self::InternalVertex(map) => match path {
-                Path::InternalVertex(name, path) => map.get(name).and_then(|v| v.walk(path)),
-                Path::ExternalVertex(name) => map.get(name),
+                Path::InternalVertex(name, path) => map
+                    .get(name)
+                    .or_else(|| map.get("*"))
+                    .and_then(|v| v.walk(path)),
+                Path::ExternalVertex(name) => map.get(name).or_else(|| map.get("*")),
             },
         }
     }

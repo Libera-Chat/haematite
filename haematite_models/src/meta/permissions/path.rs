@@ -43,3 +43,12 @@ impl Path {
         }
     }
 }
+
+impl ToString for Path {
+    fn to_string(&self) -> String {
+        match self {
+            Self::InternalVertex(name, child) => format!("{}/{}", name, child.as_ref().to_string()),
+            Self::ExternalVertex(name) => name.clone(),
+        }
+    }
+}

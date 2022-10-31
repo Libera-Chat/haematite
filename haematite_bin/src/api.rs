@@ -3,7 +3,6 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use closure::closure;
 use futures::{SinkExt as _, StreamExt as _};
-use serde_json::Value;
 use sqlx::Database as SqlxDatabase;
 use tokio::sync::broadcast::Receiver;
 use warp::ws::{Message, Ws};
@@ -14,11 +13,12 @@ use haematite_dal::Database;
 use haematite_models::config::Config;
 use haematite_models::irc::network::Network;
 use haematite_models::meta::permissions::Path;
+use haematite_ser::WrapType;
 
 pub async fn run<D: SqlxDatabase>(
     config: &Config,
     network: Arc<RwLock<Network>>,
-    stream: Receiver<(Path, Value)>,
+    stream: Receiver<(Path, WrapType)>,
     database: Arc<Database<D>>,
 ) -> Result<(), Infallible> {
     let stream = Arc::new(Mutex::new(stream));
@@ -40,19 +40,28 @@ pub async fn run<D: SqlxDatabase>(
         .and(warp::path!(String))
         .and(warp::ws())
         .map(move |access_token: String, ws1: Ws| {
-            let _user = database.user_store.access_token(&access_token);
+            let user = database.user_store.access_token(&access_token).unwrap();
 
             let mut stream = stream.lock().unwrap().resubscribe();
             ws1.on_upgrade(|ws2| async move {
                 let (mut tx, _rx) = ws2.split();
 
-                while let Ok((path, value)) = stream.recv().await {
-                    if tx
-                        .send(Message::text(format!("{} {}", path.to_string(), value)))
-                        .await
-                        .is_err()
-                    {
-                        break;
+                while let Ok((path, mut value)) = stream.recv().await {
+                    if let Some(tree) = user.permissions.walk(&path) {
+                        value.update_with(tree);
+
+                        let serialized = serde_json::to_string(&value).unwrap();
+                        if tx
+                            .send(Message::text(format!(
+                                "{} {}",
+                                path.to_string(),
+                                serialized
+                            )))
+                            .await
+                            .is_err()
+                        {
+                            break;
+                        }
                     }
                 }
             })

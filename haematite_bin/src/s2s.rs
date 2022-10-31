@@ -3,7 +3,6 @@ use std::sync::{Arc, RwLock};
 
 use colored::{Color, Colorize};
 use rustls::client::InvalidDnsNameError;
-use serde_json::value::{Serializer, Value};
 use tokio::io::{split, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
 use tokio::sync::broadcast;
@@ -14,6 +13,7 @@ use haematite_models::irc::network::Network;
 use haematite_models::meta::permissions::Path;
 use haematite_s2s::handler::{Error as HandlerError, Handler, Outcome};
 use haematite_s2s::DecodeHybrid;
+use haematite_ser::{Serializer, WrapType};
 
 use crate::tls::{make_config, Error as TlsError};
 
@@ -57,7 +57,7 @@ where
 pub async fn run(
     config: &Config,
     network_lock: Arc<RwLock<Network>>,
-    stream: broadcast::Sender<(Path, Value)>,
+    stream: broadcast::Sender<(Path, WrapType)>,
     mut handler: impl Handler,
 ) -> Result<(), Error> {
     let tconfig = make_config(&config.uplink.ca, &config.tls)?;
@@ -101,8 +101,12 @@ pub async fn run(
                 println!("< {}", printable);
                 let mut network = network_lock.write().unwrap();
                 for diff in diffs {
-                    let (path, value) = network.update(diff, Serializer).unwrap();
-                    println!("{} {}", path.to_string().color(Color::Blue), value);
+                    let (path, value) = network.update(diff, &mut Serializer {}).unwrap();
+                    println!(
+                        "{} {}",
+                        path.to_string().color(Color::Blue),
+                        serde_json::to_string(&value).unwrap()
+                    );
                     stream.send((path, value)).unwrap();
                 }
             }

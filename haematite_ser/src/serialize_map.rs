@@ -21,7 +21,7 @@ impl serde::ser::SerializeMap for SerializeMap {
     where
         T: ?Sized + Serialize,
     {
-        self.key = key.serialize(MapKeySerializer {}).ok();
+        self.key = Some(key.serialize(MapKeySerializer {})?);
         Ok(())
     }
     fn serialize_value<T>(&mut self, value: &T) -> Result<()>

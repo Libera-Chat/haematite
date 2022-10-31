@@ -170,7 +170,10 @@ impl Network {
                     .ok_or(Error::UnknownChannel)?
                     .update(diff, ser)?;
                 (
-                    Path::InternalVertex("channels".to_string(), Box::new(path)),
+                    Path::InternalVertex(
+                        "channels".to_string(),
+                        Box::new(Path::InternalVertex(name, Box::new(path))),
+                    ),
                     value,
                 )
             }

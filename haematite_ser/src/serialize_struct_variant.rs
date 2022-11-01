@@ -14,12 +14,12 @@ pub struct SerializeStructVariant {
 }
 
 impl SerializeStructVariant {
-    pub fn new(name: &'static str, variant_index: u32, variant: &'static str) -> Self {
+    pub fn new(name: &'static str, variant_index: u32, variant: &'static str, len: usize) -> Self {
         Self {
             name,
             variant_index,
             variant,
-            map: HashMap::new(),
+            map: HashMap::with_capacity(len),
         }
     }
 }

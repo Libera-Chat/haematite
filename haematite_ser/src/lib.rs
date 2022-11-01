@@ -130,20 +130,20 @@ impl serde::ser::Serializer for &mut Serializer {
         ))
     }
 
-    fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
-        Ok(SerializeSeq::default())
+    fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
+        Ok(SerializeSeq::new(len))
     }
 
-    fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple> {
-        Ok(SerializeTuple::default())
+    fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple> {
+        Ok(SerializeTuple::new(len))
     }
 
     fn serialize_tuple_struct(
         self,
         name: &'static str,
-        _len: usize,
+        len: usize,
     ) -> Result<Self::SerializeTupleStruct> {
-        Ok(SerializeTupleStruct::new(name))
+        Ok(SerializeTupleStruct::new(name, len))
     }
 
     fn serialize_tuple_variant(
@@ -151,17 +151,22 @@ impl serde::ser::Serializer for &mut Serializer {
         name: &'static str,
         variant_index: u32,
         variant: &'static str,
-        _len: usize,
+        len: usize,
     ) -> Result<Self::SerializeTupleVariant> {
-        Ok(SerializeTupleVariant::new(name, variant_index, variant))
+        Ok(SerializeTupleVariant::new(
+            name,
+            variant_index,
+            variant,
+            len,
+        ))
     }
 
-    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
-        Ok(SerializeMap::default())
+    fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
+        Ok(SerializeMap::new(len))
     }
 
-    fn serialize_struct(self, name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
-        Ok(SerializeStruct::new(name))
+    fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
+        Ok(SerializeStruct::new(name, len))
     }
 
     fn serialize_struct_variant(
@@ -169,8 +174,13 @@ impl serde::ser::Serializer for &mut Serializer {
         name: &'static str,
         variant_index: u32,
         variant: &'static str,
-        _len: usize,
+        len: usize,
     ) -> Result<Self::SerializeStructVariant> {
-        Ok(SerializeStructVariant::new(name, variant_index, variant))
+        Ok(SerializeStructVariant::new(
+            name,
+            variant_index,
+            variant,
+            len,
+        ))
     }
 }

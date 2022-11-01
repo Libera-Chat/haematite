@@ -12,10 +12,10 @@ pub struct SerializeStruct {
 }
 
 impl SerializeStruct {
-    pub fn new(name: &'static str) -> Self {
+    pub fn new(name: &'static str, len: usize) -> Self {
         Self {
             name,
-            map: HashMap::new(),
+            map: HashMap::with_capacity(len),
         }
     }
 }

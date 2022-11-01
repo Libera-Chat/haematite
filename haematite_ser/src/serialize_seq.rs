@@ -4,9 +4,18 @@ use crate::Serializer;
 
 use serde::ser::Serialize;
 
-#[derive(Default)]
 pub struct SerializeSeq {
     seq: Vec<SerializeWrap>,
+}
+
+impl SerializeSeq {
+    pub fn new(len: Option<usize>) -> Self {
+        let seq = match len {
+            Some(len) => Vec::with_capacity(len),
+            None => Vec::new(),
+        };
+        Self { seq }
+    }
 }
 
 impl serde::ser::SerializeSeq for SerializeSeq {

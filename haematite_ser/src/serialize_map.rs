@@ -7,10 +7,19 @@ use crate::Serializer;
 
 use serde::ser::Serialize;
 
-#[derive(Default)]
 pub struct SerializeMap {
     map: HashMap<String, SerializeWrap>,
     key: Option<String>,
+}
+
+impl SerializeMap {
+    pub fn new(len: Option<usize>) -> Self {
+        let map = match len {
+            Some(len) => HashMap::with_capacity(len),
+            None => HashMap::new(),
+        };
+        Self { map, key: None }
+    }
 }
 
 impl serde::ser::SerializeMap for SerializeMap {

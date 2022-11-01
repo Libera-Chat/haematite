@@ -12,12 +12,12 @@ pub struct SerializeTupleVariant {
 }
 
 impl SerializeTupleVariant {
-    pub fn new(name: &'static str, variant_index: u32, variant: &'static str) -> Self {
+    pub fn new(name: &'static str, variant_index: u32, variant: &'static str, len: usize) -> Self {
         Self {
             name,
             variant_index,
             variant,
-            seq: Vec::new(),
+            seq: Vec::with_capacity(len),
         }
     }
 }

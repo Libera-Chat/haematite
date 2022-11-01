@@ -10,10 +10,10 @@ pub struct SerializeTupleStruct {
 }
 
 impl SerializeTupleStruct {
-    pub fn new(name: &'static str) -> Self {
+    pub fn new(name: &'static str, len: usize) -> Self {
         Self {
             name,
-            seq: Vec::new(),
+            seq: Vec::with_capacity(len),
         }
     }
 }

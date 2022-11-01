@@ -4,9 +4,16 @@ use crate::Serializer;
 
 use serde::ser::Serialize;
 
-#[derive(Default)]
 pub struct SerializeTuple {
     seq: Vec<SerializeWrap>,
+}
+
+impl SerializeTuple {
+    pub fn new(len: usize) -> Self {
+        Self {
+            seq: Vec::with_capacity(len),
+        }
+    }
 }
 
 impl serde::ser::SerializeTuple for SerializeTuple {

@@ -1,3 +1,4 @@
+use haematite_models::irc::channel::{Action as ChanAction, Diff as ChanDiff};
 use haematite_models::irc::error::Error as StateError;
 use haematite_models::irc::network::{Action as NetAction, Diff as NetDiff, Network};
 use haematite_models::irc::server::{Action as ServAction, Diff as ServDiff};
@@ -11,13 +12,7 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
     let uid = line.source.as_ref().ok_or(Error::MissingSource)?.decode();
     let user = network.users.get(&uid).ok_or(StateError::UnknownUser)?;
 
-    let mut diff = vec![
-        NetDiff::InternalServer(
-            user.server.clone(),
-            ServDiff::User(uid.clone(), ServAction::Remove),
-        ),
-        NetDiff::ExternalUser(uid, NetAction::Remove),
-    ];
+    let mut diff = Vec::new();
 
     for channel_name in &user.channels {
         // this .ok_or() shouldn't be needed.
@@ -26,13 +21,23 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
             .channels
             .get(channel_name)
             .ok_or(StateError::UnknownChannel)?;
-        if channel.is_forgettable(ForgetContext::Leave(1)) {
-            diff.push(NetDiff::ExternalChannel(
+        diff.push(if channel.is_forgettable(ForgetContext::Leave(1)) {
+            NetDiff::ExternalChannel(channel_name.clone(), NetAction::Remove)
+        } else {
+            NetDiff::InternalChannel(
                 channel_name.clone(),
-                NetAction::Remove,
-            ));
-        }
+                ChanDiff::ExternalUser(uid.clone(), ChanAction::Remove),
+            )
+        });
     }
+
+    diff.append(&mut vec![
+        NetDiff::InternalServer(
+            user.server.clone(),
+            ServDiff::User(uid.clone(), ServAction::Remove),
+        ),
+        NetDiff::ExternalUser(uid, NetAction::Remove),
+    ]);
 
     Ok(Outcome::State(diff))
 }

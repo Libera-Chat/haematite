@@ -61,84 +61,82 @@ pub enum WrapType {
 
 impl WrapType {
     pub fn update_with(&mut self, tree: &Tree) {
-        if let Tree::InternalVertex(perm_map) = tree {
-            match self {
-                Self::Map(map) => {
-                    for (key, value) in map.iter_mut() {
-                        if let Some(subtree) = perm_map.get(key).or_else(|| perm_map.get("*")) {
-                            value.allowed = true;
-                            value.inner.update_with(subtree);
-                        } else {
-                            value.allowed = false;
-                        }
+        match self {
+            Self::Map(map) => {
+                for (key, value) in map.iter_mut() {
+                    if let Some(subtree) = tree.step(key) {
+                        value.allowed = true;
+                        value.inner.update_with(subtree);
+                    } else {
+                        value.allowed = false;
                     }
                 }
-                Self::Seq(values) => {
-                    let subtree = perm_map.get("*");
-                    for value in values.iter_mut() {
-                        if let Some(subtree) = subtree {
-                            value.allowed = true;
-                            value.inner.update_with(subtree);
-                        } else {
-                            value.allowed = false;
-                        }
-                    }
-                }
-                Self::Struct(_, map) => {
-                    for (key, value) in map.iter_mut() {
-                        if let Some(subtree) = perm_map.get(*key).or_else(|| perm_map.get("*")) {
-                            value.allowed = true;
-                            value.inner.update_with(subtree);
-                        } else {
-                            value.allowed = false;
-                        }
-                    }
-                }
-                Self::StructVariant(_, _, _, map) => {
-                    for (key, value) in map.iter_mut() {
-                        if let Some(subtree) = perm_map.get(*key).or_else(|| perm_map.get("*")) {
-                            value.allowed = true;
-                            value.inner.update_with(subtree);
-                        } else {
-                            value.allowed = false;
-                        }
-                    }
-                }
-                Self::Tuple(values) => {
-                    let subtree = perm_map.get("*");
-                    for value in values.iter_mut() {
-                        if let Some(subtree) = subtree {
-                            value.allowed = true;
-                            value.inner.update_with(subtree);
-                        } else {
-                            value.allowed = false;
-                        }
-                    }
-                }
-                Self::TupleStruct(_, values) => {
-                    let subtree = perm_map.get("*");
-                    for value in values.iter_mut() {
-                        if let Some(subtree) = subtree {
-                            value.allowed = true;
-                            value.inner.update_with(subtree);
-                        } else {
-                            value.allowed = false;
-                        }
-                    }
-                }
-                Self::TupleVariant(_, _, _, values) => {
-                    let subtree = perm_map.get("*");
-                    for value in values.iter_mut() {
-                        if let Some(subtree) = subtree {
-                            value.allowed = true;
-                            value.inner.update_with(subtree);
-                        } else {
-                            value.allowed = false;
-                        }
-                    }
-                }
-                _ => {}
             }
+            Self::Seq(values) => {
+                let subtree = tree.next();
+                for value in values.iter_mut() {
+                    if let Some(subtree) = subtree {
+                        value.allowed = true;
+                        value.inner.update_with(subtree);
+                    } else {
+                        value.allowed = false;
+                    }
+                }
+            }
+            Self::Struct(_, map) => {
+                for (key, value) in map.iter_mut() {
+                    if let Some(subtree) = tree.step(key) {
+                        value.allowed = true;
+                        value.inner.update_with(subtree);
+                    } else {
+                        value.allowed = false;
+                    }
+                }
+            }
+            Self::StructVariant(_, _, _, map) => {
+                for (key, value) in map.iter_mut() {
+                    if let Some(subtree) = tree.step(key) {
+                        value.allowed = true;
+                        value.inner.update_with(subtree);
+                    } else {
+                        value.allowed = false;
+                    }
+                }
+            }
+            Self::Tuple(values) => {
+                let subtree = tree.next();
+                for value in values.iter_mut() {
+                    if let Some(subtree) = subtree {
+                        value.allowed = true;
+                        value.inner.update_with(subtree);
+                    } else {
+                        value.allowed = false;
+                    }
+                }
+            }
+            Self::TupleStruct(_, values) => {
+                let subtree = tree.next();
+                for value in values.iter_mut() {
+                    if let Some(subtree) = subtree {
+                        value.allowed = true;
+                        value.inner.update_with(subtree);
+                    } else {
+                        value.allowed = false;
+                    }
+                }
+            }
+            Self::TupleVariant(_, _, _, values) => {
+                let subtree = tree.next();
+                for value in values.iter_mut() {
+                    if let Some(subtree) = subtree {
+                        value.allowed = true;
+                        value.inner.update_with(subtree);
+                    } else {
+                        value.allowed = false;
+                    }
+                }
+            }
+            _ => {}
         }
     }
 }

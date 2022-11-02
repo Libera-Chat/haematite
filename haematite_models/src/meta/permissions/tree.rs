@@ -59,4 +59,18 @@ impl Tree {
             },
         }
     }
+
+    pub fn step(&self, name: &str) -> Option<&Tree> {
+        match self {
+            Self::ExternalVertex => None,
+            Self::InternalVertex(map) => map.get(name).or_else(|| map.get("*")),
+        }
+    }
+
+    pub fn next(&self) -> Option<&Tree> {
+        match self {
+            Self::ExternalVertex => None,
+            Self::InternalVertex(map) => map.get("*"),
+        }
+    }
 }

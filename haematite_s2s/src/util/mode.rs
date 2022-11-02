@@ -2,6 +2,7 @@ pub enum ArgType {
     None,
     One,
     Many,
+    Status,
 }
 
 pub struct Change {

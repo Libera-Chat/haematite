@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use haematite_models::irc::channel::Channel;
 use haematite_models::irc::membership::Membership;
@@ -43,19 +43,19 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
 
     for uid in uids {
         //TODO: precompile
-        let statuses = HashSet::from(['+', '@']);
+        let statuses = HashMap::from([('+', 'v'), ('@', 'o')]);
 
         let mut uid = uid.decode();
 
         let mut membership = Membership::new();
 
         while let Some(char) = uid.chars().next() {
-            if !statuses.contains(&char) {
+            if let Some(mode) = statuses.get(&char) {
+                membership.status.push(*mode);
+                uid.remove(0);
+            } else {
                 break;
             }
-
-            membership.status.push(char);
-            uid.remove(0);
         }
 
         if uid.is_empty() {

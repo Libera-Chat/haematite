@@ -65,7 +65,7 @@ impl WrapType {
             match self {
                 Self::Map(map) => {
                     for (key, value) in map.iter_mut() {
-                        if let Some(subtree) = perm_map.get(key) {
+                        if let Some(subtree) = perm_map.get(key).or_else(|| perm_map.get("*")) {
                             value.allowed = true;
                             value.inner.update_with(subtree);
                         } else {
@@ -74,8 +74,9 @@ impl WrapType {
                     }
                 }
                 Self::Seq(values) => {
-                    for (i, value) in values.iter_mut().enumerate() {
-                        if let Some(subtree) = perm_map.get(&i.to_string()) {
+                    let subtree = perm_map.get("*");
+                    for value in values.iter_mut() {
+                        if let Some(subtree) = subtree {
                             value.allowed = true;
                             value.inner.update_with(subtree);
                         } else {
@@ -85,7 +86,7 @@ impl WrapType {
                 }
                 Self::Struct(_, map) => {
                     for (key, value) in map.iter_mut() {
-                        if let Some(subtree) = perm_map.get(*key) {
+                        if let Some(subtree) = perm_map.get(*key).or_else(|| perm_map.get("*")) {
                             value.allowed = true;
                             value.inner.update_with(subtree);
                         } else {
@@ -95,7 +96,7 @@ impl WrapType {
                 }
                 Self::StructVariant(_, _, _, map) => {
                     for (key, value) in map.iter_mut() {
-                        if let Some(subtree) = perm_map.get(*key) {
+                        if let Some(subtree) = perm_map.get(*key).or_else(|| perm_map.get("*")) {
                             value.allowed = true;
                             value.inner.update_with(subtree);
                         } else {
@@ -104,8 +105,9 @@ impl WrapType {
                     }
                 }
                 Self::Tuple(values) => {
-                    for (i, value) in values.iter_mut().enumerate() {
-                        if let Some(subtree) = perm_map.get(&i.to_string()) {
+                    let subtree = perm_map.get("*");
+                    for value in values.iter_mut() {
+                        if let Some(subtree) = subtree {
                             value.allowed = true;
                             value.inner.update_with(subtree);
                         } else {
@@ -114,8 +116,9 @@ impl WrapType {
                     }
                 }
                 Self::TupleStruct(_, values) => {
-                    for (i, value) in values.iter_mut().enumerate() {
-                        if let Some(subtree) = perm_map.get(&i.to_string()) {
+                    let subtree = perm_map.get("*");
+                    for value in values.iter_mut() {
+                        if let Some(subtree) = subtree {
                             value.allowed = true;
                             value.inner.update_with(subtree);
                         } else {
@@ -124,8 +127,9 @@ impl WrapType {
                     }
                 }
                 Self::TupleVariant(_, _, _, values) => {
-                    for (i, value) in values.iter_mut().enumerate() {
-                        if let Some(subtree) = perm_map.get(&i.to_string()) {
+                    let subtree = perm_map.get("*");
+                    for value in values.iter_mut() {
+                        if let Some(subtree) = subtree {
                             value.allowed = true;
                             value.inner.update_with(subtree);
                         } else {

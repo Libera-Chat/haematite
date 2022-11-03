@@ -7,17 +7,24 @@ use serde::ser::{
     SerializeTupleStruct, SerializeTupleVariant,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, PartialEq)]
+pub enum Allow {
+    Yes,
+    No,
+    Untraversable,
+}
+
+#[derive(Clone, Debug)]
 pub struct SerializeWrap {
     pub inner: WrapType,
-    pub allowed: bool,
+    pub allowed: Allow,
 }
 
 impl SerializeWrap {
     pub fn new(inner: WrapType) -> Self {
         Self {
             inner,
-            allowed: true,
+            allowed: Allow::Yes,
         }
     }
 }
@@ -60,83 +67,79 @@ pub enum WrapType {
 }
 
 impl WrapType {
-    pub fn update_with(&mut self, tree: &Tree) {
+    pub fn update_with(&mut self, tree: &Tree) -> Allow {
         match self {
             Self::Map(map) => {
                 for (key, value) in map.iter_mut() {
                     if let Some(subtree) = tree.step(key) {
-                        value.allowed = true;
-                        value.inner.update_with(subtree);
+                        value.allowed = value.inner.update_with(subtree);
                     } else {
-                        value.allowed = false;
+                        value.allowed = Allow::No;
                     }
                 }
+                Allow::Yes
             }
             Self::Seq(values) => {
-                let subtree = tree.next();
-                for value in values.iter_mut() {
-                    if let Some(subtree) = subtree {
-                        value.allowed = true;
-                        value.inner.update_with(subtree);
-                    } else {
-                        value.allowed = false;
+                if let Some(subtree) = tree.next() {
+                    for value in values.iter_mut() {
+                        value.allowed = value.inner.update_with(subtree);
                     }
+                    Allow::Yes
+                } else {
+                    Allow::Untraversable
                 }
             }
             Self::Struct(_, map) => {
                 for (key, value) in map.iter_mut() {
                     if let Some(subtree) = tree.step(key) {
-                        value.allowed = true;
-                        value.inner.update_with(subtree);
+                        value.allowed = value.inner.update_with(subtree);
                     } else {
-                        value.allowed = false;
+                        value.allowed = Allow::No;
                     }
                 }
+                Allow::Yes
             }
             Self::StructVariant(_, _, _, map) => {
                 for (key, value) in map.iter_mut() {
                     if let Some(subtree) = tree.step(key) {
-                        value.allowed = true;
-                        value.inner.update_with(subtree);
+                        value.allowed = value.inner.update_with(subtree);
                     } else {
-                        value.allowed = false;
+                        value.allowed = Allow::No;
                     }
                 }
+                Allow::Yes
             }
             Self::Tuple(values) => {
-                let subtree = tree.next();
-                for value in values.iter_mut() {
-                    if let Some(subtree) = subtree {
-                        value.allowed = true;
-                        value.inner.update_with(subtree);
-                    } else {
-                        value.allowed = false;
+                if let Some(subtree) = tree.next() {
+                    for value in values.iter_mut() {
+                        value.allowed = value.inner.update_with(subtree);
                     }
+                    Allow::Yes
+                } else {
+                    Allow::Untraversable
                 }
             }
             Self::TupleStruct(_, values) => {
-                let subtree = tree.next();
-                for value in values.iter_mut() {
-                    if let Some(subtree) = subtree {
-                        value.allowed = true;
-                        value.inner.update_with(subtree);
-                    } else {
-                        value.allowed = false;
+                if let Some(subtree) = tree.next() {
+                    for value in values.iter_mut() {
+                        value.allowed = value.inner.update_with(subtree);
                     }
+                    Allow::Yes
+                } else {
+                    Allow::Untraversable
                 }
             }
             Self::TupleVariant(_, _, _, values) => {
-                let subtree = tree.next();
-                for value in values.iter_mut() {
-                    if let Some(subtree) = subtree {
-                        value.allowed = true;
-                        value.inner.update_with(subtree);
-                    } else {
-                        value.allowed = false;
+                if let Some(subtree) = tree.next() {
+                    for value in values.iter_mut() {
+                        value.allowed = value.inner.update_with(subtree);
                     }
+                    Allow::Yes
+                } else {
+                    Allow::Untraversable
                 }
             }
-            _ => {}
+            _ => Allow::Yes,
         }
     }
 }
@@ -173,7 +176,10 @@ impl Serialize for WrapType {
                 serializer.serialize_newtype_variant(name, *variant_index, variant, value)
             }
             Self::Map(map) => {
-                let map: HashMap<_, _> = map.iter().filter(|(_k, v)| v.allowed).collect();
+                let map: HashMap<_, _> = map
+                    .iter()
+                    .filter(|(_k, v)| v.allowed == Allow::Yes)
+                    .collect();
                 let mut serializer = serializer.serialize_map(Some(map.len()))?;
                 for (key, value) in map.iter() {
                     serializer.serialize_key(key)?;
@@ -182,7 +188,7 @@ impl Serialize for WrapType {
                 serializer.end()
             }
             Self::Seq(values) => {
-                let values: Vec<_> = values.iter().filter(|v| v.allowed).collect();
+                let values: Vec<_> = values.iter().filter(|v| v.allowed == Allow::Yes).collect();
                 let mut serializer = serializer.serialize_seq(Some(values.len()))?;
                 for value in values {
                     serializer.serialize_element(&value.inner)?;
@@ -190,7 +196,10 @@ impl Serialize for WrapType {
                 serializer.end()
             }
             Self::Struct(name, map) => {
-                let map: HashMap<_, _> = map.iter().filter(|(_k, v)| v.allowed).collect();
+                let map: HashMap<_, _> = map
+                    .iter()
+                    .filter(|(_k, v)| v.allowed == Allow::Yes)
+                    .collect();
                 let mut serializer = serializer.serialize_struct(name, map.len())?;
                 for (key, value) in map.iter() {
                     serializer.serialize_field(key, &value.inner)?;
@@ -198,7 +207,10 @@ impl Serialize for WrapType {
                 serializer.end()
             }
             Self::StructVariant(name, variant_index, variant, map) => {
-                let map: HashMap<_, _> = map.iter().filter(|(_k, v)| v.allowed).collect();
+                let map: HashMap<_, _> = map
+                    .iter()
+                    .filter(|(_k, v)| v.allowed == Allow::Yes)
+                    .collect();
                 let mut serializer = serializer.serialize_struct_variant(
                     name,
                     *variant_index,
@@ -211,7 +223,7 @@ impl Serialize for WrapType {
                 serializer.end()
             }
             Self::Tuple(values) => {
-                let values: Vec<_> = values.iter().filter(|v| v.allowed).collect();
+                let values: Vec<_> = values.iter().filter(|v| v.allowed == Allow::Yes).collect();
                 let mut serializer = serializer.serialize_tuple(values.len())?;
                 for value in values {
                     serializer.serialize_element(&value.inner)?;
@@ -219,7 +231,7 @@ impl Serialize for WrapType {
                 serializer.end()
             }
             Self::TupleStruct(name, values) => {
-                let values: Vec<_> = values.iter().filter(|v| v.allowed).collect();
+                let values: Vec<_> = values.iter().filter(|v| v.allowed == Allow::Yes).collect();
                 let mut serializer = serializer.serialize_tuple_struct(name, values.len())?;
                 for value in values {
                     serializer.serialize_field(&value.inner)?;
@@ -227,7 +239,7 @@ impl Serialize for WrapType {
                 serializer.end()
             }
             Self::TupleVariant(name, variant_index, variant, values) => {
-                let values: Vec<_> = values.iter().filter(|v| v.allowed).collect();
+                let values: Vec<_> = values.iter().filter(|v| v.allowed == Allow::Yes).collect();
                 let mut serializer = serializer.serialize_tuple_variant(
                     name,
                     *variant_index,

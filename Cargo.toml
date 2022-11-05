@@ -5,4 +5,5 @@ members = [
     "haematite_dal",
     "haematite_models",
     "haematite_s2s",
+    "haematite_ser",
 ]

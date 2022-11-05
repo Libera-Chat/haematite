@@ -81,3 +81,31 @@ fn seq_untraversable() {
     let out = wrap.update_with(&Tree::from(vec![Path::from("1")]));
     assert_eq!(out, Allow::Untraversable);
 }
+
+#[test]
+fn tuple_traversable() {
+    let obj = (5,);
+
+    let mut serializer = Serializer {};
+    let mut wrap = obj.serialize(&mut serializer).unwrap();
+    let out = wrap.update_with(&Tree::from(vec![Path::from("*")]));
+    assert_eq!(out, Allow::Yes);
+
+    match wrap {
+        WrapType::Tuple(seq) => {
+            assert_eq!(seq.len(), 1);
+            assert_eq!(seq[0].allowed, Allow::Yes);
+        }
+        v => assert!(false, "wrong tuple: {:?}", v),
+    }
+}
+
+#[test]
+fn tuple_untraversable() {
+    let obj = (5,);
+
+    let mut serializer = Serializer {};
+    let mut wrap = obj.serialize(&mut serializer).unwrap();
+    let out = wrap.update_with(&Tree::from(vec![Path::from("1")]));
+    assert_eq!(out, Allow::Untraversable);
+}

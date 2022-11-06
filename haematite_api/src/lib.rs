@@ -70,7 +70,10 @@ impl Api {
             .ok_or(Error::Argument)?
             .serialize(&mut Serializer {})?;
 
-        if let Some(tree) = user.permissions.walk(&Path::from(&format!("users/{}", uid))) {
+        if let Some(tree) = user
+            .permissions
+            .walk(&Path::from(&format!("users/{}", uid)))
+        {
             network_user.update_with(tree);
             Ok(self.format(&network_user)?)
         } else {

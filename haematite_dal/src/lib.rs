@@ -2,17 +2,19 @@ mod user_store;
 
 use crate::user_store::UserStore;
 use sqlx::{Database as SqlxDatabase, Pool};
+use std::sync::Arc;
 
 pub struct Database<D: SqlxDatabase> {
-    _connection: Pool<D>,
-    pub user_store: UserStore,
+    _connection: Arc<Pool<D>>,
+    pub user_store: UserStore<D>,
 }
 
 impl<D: SqlxDatabase> Database<D> {
-    pub fn from(_connection: Pool<D>) -> Self {
+    pub fn from(connection: Pool<D>) -> Self {
+        let connection = Arc::new(connection);
         Self {
-            _connection,
-            user_store: UserStore {},
+            user_store: UserStore::new(Arc::clone(&connection)),
+            _connection: connection,
         }
     }
 }

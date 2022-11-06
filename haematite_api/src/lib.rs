@@ -1,5 +1,12 @@
+use std::sync::{Arc, PoisonError, RwLock};
+
 use haematite_models::irc::network::Network;
-use serde_json::{Error as JsonError, Value};
+use haematite_models::meta::permissions::Path;
+use haematite_models::meta::user::User;
+use haematite_ser::error::Error as SerError;
+use haematite_ser::Serializer;
+use serde::Serialize;
+use serde_json::Error as JsonError;
 
 pub enum Format {
     Terse,
@@ -7,6 +14,7 @@ pub enum Format {
 }
 
 pub struct Api {
+    network: Arc<RwLock<Network>>,
     format: Format,
 }
 
@@ -14,6 +22,8 @@ pub struct Api {
 pub enum Error {
     Serialize,
     Argument,
+    Concurrency,
+    Unauthorized,
 }
 
 impl From<JsonError> for Error {
@@ -22,26 +32,52 @@ impl From<JsonError> for Error {
     }
 }
 
+impl From<SerError> for Error {
+    fn from(_error: SerError) -> Self {
+        Self::Serialize
+    }
+}
+
+impl<T> From<PoisonError<T>> for Error {
+    fn from(_error: PoisonError<T>) -> Self {
+        Self::Concurrency
+    }
+}
+
 impl Api {
-    pub fn new(format: Format) -> Self {
-        Self { format }
+    pub fn new(network: Arc<RwLock<Network>>, format: Format) -> Self {
+        Self { network, format }
     }
 
-    fn format(&self, value: Value) -> Result<String, JsonError> {
+    fn format<T: Serialize>(&self, value: &T) -> Result<String, JsonError> {
         Ok(match self.format {
-            Format::Terse => serde_json::to_string(&value)?,
-            Format::Pretty => serde_json::to_string_pretty(&value)?,
+            Format::Terse => serde_json::to_string(value)?,
+            Format::Pretty => serde_json::to_string_pretty(value)?,
         })
     }
 
-    pub fn get_network(&self, network: &Network) -> Result<String, Error> {
-        let value = serde_json::to_value(network)?;
-        Ok(self.format(value)?)
+    pub fn get_network(&self, user: &User) -> Result<String, Error> {
+        let mut network = self.network.read()?.serialize(&mut Serializer {})?;
+        network.update_with(&user.permissions);
+        Ok(self.format(&network)?)
     }
 
-    pub fn get_user(&self, network: &Network, uid: &str) -> Result<String, Error> {
-        let user = network.users.get(uid).ok_or(Error::Argument)?;
-        let value = serde_json::to_value(user)?;
-        Ok(self.format(value)?)
+    pub fn get_user(&self, user: &User, uid: &str) -> Result<String, Error> {
+        let network = self.network.read()?;
+        let mut network_user = network
+            .users
+            .get(uid)
+            .ok_or(Error::Argument)?
+            .serialize(&mut Serializer {})?;
+
+        if let Some(tree) = user
+            .permissions
+            .walk(&Path::from(&format!("users/{}", uid)))
+        {
+            network_user.update_with(tree);
+            Ok(self.format(&network_user)?)
+        } else {
+            Err(Error::Unauthorized)
+        }
     }
 }

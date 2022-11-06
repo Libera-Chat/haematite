@@ -7,5 +7,7 @@ edition = "2021"
 
 [dependencies]
 haematite_models = { path = "../haematite_models" }
+haematite_ser = { path = "../haematite_ser" }
 
+serde = "1.0.147"
 serde_json = "1.0.82"

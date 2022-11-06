@@ -6,7 +6,7 @@ use futures::{SinkExt as _, StreamExt as _};
 use sqlx::Database as SqlxDatabase;
 use tokio::sync::broadcast::Receiver;
 use warp::ws::{Message, Ws};
-use warp::Filter;
+use warp::{Filter, Reply as _};
 
 use haematite_api::{Api, Format};
 use haematite_dal::Database;
@@ -38,16 +38,15 @@ fn authorization<D: SqlxDatabase>(
 }
 
 #[allow(clippy::unused_async)]
-async fn recover(err: warp::Rejection) -> Result<impl warp::Reply, Infallible> {
-    match err.find() {
-        Some(Rejection::Unauthorized) => Ok(warp::reply::with_status(
-            "bad access token",
+async fn recover(err: warp::Rejection) -> Result<(warp::reply::Response,), warp::Rejection> {
+    if let Some(Rejection::Unauthorized) = err.find() {
+        Ok((warp::reply::with_status(
+            "bad access token".to_string(),
             warp::http::StatusCode::UNAUTHORIZED,
-        )),
-        None => Ok(warp::reply::with_status(
-            "unexpected error",
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        )),
+        )
+        .into_response(),))
+    } else {
+        Err(err)
     }
 }
 
@@ -64,14 +63,14 @@ pub async fn run<D: SqlxDatabase>(
     let path_network = warp::path!("rest" / "network")
         .and(authorization(Arc::clone(&database)))
         .map(closure!(clone api, |user| {
-            api.get_network(&user).unwrap()
+            api.get_network(&user).unwrap().into_response()
         }));
 
     let path_user = warp::path!("rest" / "user")
         .and(authorization(Arc::clone(&database)))
         .and(warp::path::param())
         .map(closure!(clone api, |user, uid: String| {
-            api.get_user(&user, &uid).unwrap()
+            api.get_user(&user, &uid).unwrap().into_response()
         }));
 
     let path_stream = warp::path("stream")
@@ -101,11 +100,19 @@ pub async fn run<D: SqlxDatabase>(
                     }
                 }
             })
+            .into_response()
         });
 
-    warp::serve(path_network.or(path_user).or(path_stream).recover(recover))
-        .run(config.bind)
-        .await;
+    warp::serve(
+        path_network
+            .or(path_user)
+            .unify()
+            .or(path_stream)
+            .unify()
+            .or_else(recover),
+    )
+    .run(config.bind)
+    .await;
 
     Ok(())
 }

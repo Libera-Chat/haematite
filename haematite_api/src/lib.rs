@@ -1,7 +1,10 @@
 use std::sync::{Arc, PoisonError, RwLock};
 
 use haematite_models::irc::network::Network;
+use haematite_models::meta::permissions::Path;
 use haematite_models::meta::user::User;
+use haematite_ser::error::Error as SerError;
+use haematite_ser::Serializer;
 use serde::Serialize;
 use serde_json::Error as JsonError;
 
@@ -20,10 +23,17 @@ pub enum Error {
     Serialize,
     Argument,
     Concurrency,
+    Unauthorized,
 }
 
 impl From<JsonError> for Error {
     fn from(_error: JsonError) -> Self {
+        Self::Serialize
+    }
+}
+
+impl From<SerError> for Error {
+    fn from(_error: SerError) -> Self {
         Self::Serialize
     }
 }
@@ -46,14 +56,25 @@ impl Api {
         })
     }
 
-    pub fn get_network(&self, _user: &User) -> Result<String, Error> {
-        let network = self.network.read()?;
-        Ok(self.format(&*network)?)
+    pub fn get_network(&self, user: &User) -> Result<String, Error> {
+        let mut network = self.network.read()?.serialize(&mut Serializer {})?;
+        network.update_with(&user.permissions);
+        Ok(self.format(&network)?)
     }
 
-    pub fn get_user(&self, _user: &User, uid: &str) -> Result<String, Error> {
+    pub fn get_user(&self, user: &User, uid: &str) -> Result<String, Error> {
         let network = self.network.read()?;
-        let user = network.users.get(uid).ok_or(Error::Argument)?;
-        Ok(self.format(user)?)
+        let mut network_user = network
+            .users
+            .get(uid)
+            .ok_or(Error::Argument)?
+            .serialize(&mut Serializer {})?;
+
+        if let Some(tree) = user.permissions.walk(&Path::from(&format!("users/{}", uid))) {
+            network_user.update_with(tree);
+            Ok(self.format(&network_user)?)
+        } else {
+            Err(Error::Unauthorized)
+        }
     }
 }

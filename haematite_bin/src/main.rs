@@ -83,9 +83,7 @@ async fn main() {
         }
     };
 
-    let database = Arc::new(Database::from(
-        PgPool::connect(&config.database).await.unwrap(),
-    ));
+    let database = Database::from(PgPool::connect(&config.database).await.unwrap());
 
     let network = Arc::new(RwLock::new(Network::new(config.server.clone())));
     let (stream_tx, stream_rx) = broadcast::channel(200);

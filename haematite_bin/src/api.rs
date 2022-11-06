@@ -8,7 +8,7 @@ use tokio::sync::broadcast::Receiver;
 use warp::ws::{Message, Ws};
 use warp::{Filter, Reply as _};
 
-use haematite_api::{Api, Format};
+use haematite_api::{Api, Error as ApiError, Format};
 use haematite_dal::Database;
 use haematite_models::config::Config;
 use haematite_models::irc::network::Network;
@@ -17,11 +17,18 @@ use haematite_models::meta::user::User;
 use haematite_ser::WrapType;
 
 #[derive(Debug)]
-enum Rejection {
+enum Error {
     Unauthorized,
+    Api(ApiError),
 }
 
-impl warp::reject::Reject for Rejection {}
+impl warp::reject::Reject for Error {}
+
+impl From<ApiError> for Error {
+    fn from(e: ApiError) -> Self {
+        Self::Api(e)
+    }
+}
 
 fn authorization<D: SqlxDatabase>(
     database: Arc<Database<D>>,
@@ -31,22 +38,35 @@ fn authorization<D: SqlxDatabase>(
         async move {
             match database.user_store.access_token(&token).await {
                 Some(user) => Ok(user),
-                None => Err(warp::reject::custom(Rejection::Unauthorized)),
+                None => Err(warp::reject::custom(Error::Unauthorized)),
             }
         }
     })
 }
 
 #[allow(clippy::unused_async)]
-async fn recover(err: warp::Rejection) -> Result<(warp::reply::Response,), warp::Rejection> {
-    if let Some(Rejection::Unauthorized) = err.find() {
-        Ok((warp::reply::with_status(
+async fn recover(
+    err: warp::Rejection,
+) -> Result<(Result<warp::reply::Response, Error>,), warp::Rejection> {
+    if let Some(Error::Unauthorized) = err.find() {
+        Ok((Ok(warp::reply::with_status(
             "bad access token".to_string(),
             warp::http::StatusCode::UNAUTHORIZED,
         )
-        .into_response(),))
+        .into_response()),))
     } else {
         Err(err)
+    }
+}
+
+fn display(res: Result<warp::reply::Response, Error>) -> warp::reply::Response {
+    match res {
+        Ok(response) => response,
+        Err(e) => warp::reply::with_status(
+            format!("unknown error: {:?}", e),
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        )
+        .into_response(),
     }
 }
 
@@ -63,14 +83,14 @@ pub async fn run<D: SqlxDatabase>(
     let path_network = warp::path!("rest" / "network")
         .and(authorization(Arc::clone(&database)))
         .map(closure!(clone api, |user| {
-            api.get_network(&user).unwrap().into_response()
+            Ok(api.get_network(&user)?.into_response())
         }));
 
     let path_user = warp::path!("rest" / "user")
         .and(authorization(Arc::clone(&database)))
         .and(warp::path::param())
         .map(closure!(clone api, |user, uid: String| {
-            api.get_user(&user, &uid).unwrap().into_response()
+            Ok(api.get_user(&user, &uid)?.into_response())
         }));
 
     let path_stream = warp::path("stream")
@@ -78,29 +98,30 @@ pub async fn run<D: SqlxDatabase>(
         .and(warp::ws())
         .map(move |user: User, ws1: Ws| {
             let mut stream = stream.lock().unwrap().resubscribe();
-            ws1.on_upgrade(|ws2| async move {
-                let (mut tx, _rx) = ws2.split();
+            Ok(ws1
+                .on_upgrade(|ws2| async move {
+                    let (mut tx, _rx) = ws2.split();
 
-                while let Ok((path, mut value)) = stream.recv().await {
-                    if let Some(tree) = user.permissions.walk(&path) {
-                        value.update_with(tree);
+                    while let Ok((path, mut value)) = stream.recv().await {
+                        if let Some(tree) = user.permissions.walk(&path) {
+                            value.update_with(tree);
 
-                        let serialized = serde_json::to_string(&value).unwrap();
-                        if tx
-                            .send(Message::text(format!(
-                                "{} {}",
-                                path.to_string(),
-                                serialized
-                            )))
-                            .await
-                            .is_err()
-                        {
-                            break;
+                            let serialized = serde_json::to_string(&value).unwrap();
+                            if tx
+                                .send(Message::text(format!(
+                                    "{} {}",
+                                    path.to_string(),
+                                    serialized
+                                )))
+                                .await
+                                .is_err()
+                            {
+                                break;
+                            }
                         }
                     }
-                }
-            })
-            .into_response()
+                })
+                .into_response())
         });
 
     warp::serve(
@@ -109,7 +130,8 @@ pub async fn run<D: SqlxDatabase>(
             .unify()
             .or(path_stream)
             .unify()
-            .or_else(recover),
+            .or_else(recover)
+            .map(display),
     )
     .run(config.bind)
     .await;

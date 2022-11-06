@@ -5,7 +5,8 @@ pub fn to_changes(modes: impl Iterator<Item = (char, bool)>) -> Vec<Change> {
 
     for (mode, remove) in modes {
         let arg_type = match mode {
-            'k' | 'o' | 'v' => ArgType::One,
+            'v' | 'o' => ArgType::Status,
+            'k' => ArgType::One,
             'f' | 'j' | 'l' if !remove => ArgType::One,
             'E' | 'b' | 'e' | 'q' => ArgType::Many,
             _ => ArgType::None,

@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use chrono::Utc;
 use haematite_models::irc::channel::{Action as ChanAction, Diff as ChanDiff, ModeMetadata};
 use haematite_models::irc::error::Error as StateError;
@@ -26,8 +24,8 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
     let mut diff = Vec::new();
     for (change, arg) in modes.iter().zip(mode_args.iter()) {
         let arg = arg.map(DecodeHybrid::decode);
-        let mode_diff = if HashSet::from(['v', 'o']).contains(&change.mode) {
-            ChanDiff::InternalUser(
+        let mode_diff = match change.arg_type {
+            ArgType::Status => ChanDiff::InternalUser(
                 arg.ok_or(Error::MissingArgument)?,
                 MembDiff::Status(
                     change.mode,
@@ -37,34 +35,31 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
                         MembAction::Add
                     },
                 ),
-            )
-        } else {
-            match change.arg_type {
-                ArgType::None | ArgType::One => ChanDiff::Mode(
+            ),
+            ArgType::None | ArgType::One => ChanDiff::Mode(
+                change.mode,
+                if change.remove {
+                    ChanAction::Remove
+                } else {
+                    ChanAction::Add(arg)
+                },
+            ),
+            ArgType::Many => {
+                // this shouldn't possibly be None; `pair_args` should have
+                // already thrown this
+                let arg = arg.ok_or(Error::MissingArgument)?;
+                ChanDiff::ModeList(
                     change.mode,
+                    arg,
                     if change.remove {
                         ChanAction::Remove
                     } else {
-                        ChanAction::Add(arg)
+                        ChanAction::Add(Some(ModeMetadata {
+                            since: Utc::now().naive_utc(),
+                            setter: setter.hostmask(),
+                        }))
                     },
-                ),
-                ArgType::Many => {
-                    // this shouldn't possibly be None; `pair_args` should have
-                    // already thrown this
-                    let arg = arg.ok_or(Error::MissingArgument)?;
-                    ChanDiff::ModeList(
-                        change.mode,
-                        arg,
-                        if change.remove {
-                            ChanAction::Remove
-                        } else {
-                            ChanAction::Add(Some(ModeMetadata {
-                                since: Utc::now().naive_utc(),
-                                setter: setter.hostmask(),
-                            }))
-                        },
-                    )
-                }
+                )
             }
         };
 

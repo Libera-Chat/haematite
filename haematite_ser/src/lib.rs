@@ -18,7 +18,7 @@ use crate::serialize_struct_variant::SerializeStructVariant;
 use crate::serialize_tuple::SerializeTuple;
 use crate::serialize_tuple_struct::SerializeTupleStruct;
 use crate::serialize_tuple_variant::SerializeTupleVariant;
-pub use crate::wrap::WrapType;
+pub use crate::wrap::{Allow, WrapType};
 
 use serde::Serialize;
 

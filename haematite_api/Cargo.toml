@@ -11,3 +11,4 @@ haematite_ser = { path = "../haematite_ser" }
 
 serde = "1.0.147"
 serde_json = "1.0.82"
+tokio = { version = "1.20.0", features = ["sync"] }

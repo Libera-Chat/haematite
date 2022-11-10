@@ -25,7 +25,7 @@ use clap::Parser;
 use futures::future::TryFutureExt as _;
 use serde_yaml::from_reader;
 use sqlx::PgPool;
-use tokio::sync::broadcast;
+use tokio::sync::mpsc;
 
 use haematite_dal::Database;
 use haematite_models::config::{Config, Error as ConfigError};
@@ -86,11 +86,17 @@ async fn main() {
     let database = Database::from(PgPool::connect(&config.database).await.unwrap());
 
     let network = Arc::new(RwLock::new(Network::new(config.server.clone())));
-    let (stream_tx, stream_rx) = broadcast::channel(200);
+    let (state_stream_tx, mut state_stream_rx) = mpsc::channel(200);
 
     tokio::try_join!(
-        run_s2s(&config, Arc::clone(&network), stream_tx, handler).map_err(Error::S2s),
-        run_api(&config, Arc::clone(&network), stream_rx, database).map_err(Error::Api),
+        run_s2s(&config, Arc::clone(&network), state_stream_tx, handler).map_err(Error::S2s),
+        run_api(
+            &config,
+            Arc::clone(&network),
+            &mut state_stream_rx,
+            database
+        )
+        .map_err(Error::Api),
     )
     .unwrap();
 }

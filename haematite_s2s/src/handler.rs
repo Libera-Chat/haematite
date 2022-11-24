@@ -3,7 +3,10 @@ use haematite_models::irc::error::Error as StateError;
 use haematite_models::irc::network::{Diff, Network};
 
 use crate::line::Error as LineError;
-use crate::util::mode::PairError;
+pub use crate::line_handler::{
+    ArgumentCountResolver, Handler as LineHandler, HandlerResolver as LineHandlerResolver,
+    Resolution as LineHandlerResolution,
+};
 
 pub enum Outcome {
     Unhandled,
@@ -14,11 +17,16 @@ pub enum Outcome {
 
 #[derive(Debug)]
 pub enum Error {
-    InvalidArgument,
-    InvalidProtocol,
+    Line(LineError),
+    InvalidNumber,
+    InvalidDateTime,
+    InvalidFormat,
+    EmptyArgument,
+    UnexpectedValue,
     InvalidState,
     MissingSource,
-    MissingArgument,
+    ExcessArguments { expected: usize, actual: usize },
+    InsufficientArguments { expected: usize, actual: usize },
 }
 
 pub trait Handler {
@@ -63,13 +71,7 @@ impl From<StateError> for Error {
 }
 
 impl From<LineError> for Error {
-    fn from(_error: LineError) -> Self {
-        Self::InvalidProtocol
-    }
-}
-
-impl From<PairError> for Error {
-    fn from(_error: PairError) -> Self {
-        Self::MissingArgument
+    fn from(error: LineError) -> Self {
+        Self::Line(error)
     }
 }

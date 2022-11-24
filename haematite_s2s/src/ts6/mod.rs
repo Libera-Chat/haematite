@@ -24,14 +24,16 @@ mod tmode;
 mod topic;
 mod util;
 
-use std::collections::HashSet;
+use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 use std::time::SystemTime;
 
 use haematite_models::config::{Config, Error as ConfigError};
 use haematite_models::irc::network::Network;
 use regex::Regex;
 
-use crate::handler::{Error, Handler, Outcome};
+use crate::handler::{Error, Handler, LineHandlerResolution, LineHandlerResolver, Outcome};
 use crate::line::Line;
 
 const CAPABS: [&str; 18] = [
@@ -41,13 +43,58 @@ const CAPABS: [&str; 18] = [
 
 #[derive(Default)]
 pub struct TS6Handler {
-    uplink: Option<Vec<u8>>,
-    uplink_capabs: HashSet<String>,
+    handler_resolvers: HashMap<&'static [u8], Box<dyn LineHandlerResolver>>,
+    uplink: Rc<RefCell<Option<Vec<u8>>>>,
+    uplink_capabs: Rc<RefCell<HashSet<String>>>,
 }
 
 impl TS6Handler {
     pub fn new() -> Self {
-        TS6Handler::default()
+        let mut handler = Self::default();
+        handler.add_line_handler_resolver(b"AWAY", away::Handler::resolver());
+        handler.add_line_handler_resolver(b"BAN", ban::Handler::resolver());
+        handler.add_line_handler_resolver(b"BMASK", bmask::Handler::resolver());
+        handler.add_line_handler_resolver(
+            b"CAPAB",
+            capab::Handler::resolver(Rc::clone(&handler.uplink_capabs)),
+        );
+        handler.add_line_handler_resolver(b"CHGHOST", chghost::Handler::resolver());
+        handler.add_line_handler_resolver(b"EBMASK", ebmask::Handler::resolver());
+        handler.add_line_handler_resolver(b"ENCAP", encap::Handler::resolver());
+        handler.add_line_handler_resolver(b"EUID", euid::Handler::resolver());
+        handler.add_line_handler_resolver(b"JOIN", join::Handler::resolver());
+        handler.add_line_handler_resolver(b"KILL", kill::Handler::resolver());
+        handler.add_line_handler_resolver(b"MODE", mode::Handler::resolver());
+        handler.add_line_handler_resolver(b"NICK", nick::Handler::resolver());
+        handler.add_line_handler_resolver(b"OPER", oper::Handler::resolver());
+        handler.add_line_handler_resolver(b"PART", part::Handler::resolver());
+        handler.add_line_handler_resolver(
+            b"PASS",
+            pass::Handler::resolver(Rc::clone(&handler.uplink)),
+        );
+        handler.add_line_handler_resolver(b"PING", ping::Handler::resolver());
+        handler.add_line_handler_resolver(b"QUIT", quit::Handler::resolver());
+        handler.add_line_handler_resolver(
+            b"SERVER",
+            server::Handler::resolver(Rc::clone(&handler.uplink)),
+        );
+        handler.add_line_handler_resolver(b"SID", sid::Handler::resolver());
+        handler.add_line_handler_resolver(b"SJOIN", sjoin::Handler::resolver());
+        handler.add_line_handler_resolver(b"SQUIT", squit::Handler::resolver());
+        handler.add_line_handler_resolver(b"TB", tb::Handler::resolver());
+        handler.add_line_handler_resolver(b"TMODE", tmode::Handler::resolver());
+        handler.add_line_handler_resolver(b"TOPIC", topic::Handler::resolver());
+        handler
+    }
+}
+
+impl TS6Handler {
+    fn add_line_handler_resolver<T: LineHandlerResolver + 'static>(
+        &mut self,
+        command: &'static [u8],
+        handler: T,
+    ) {
+        self.handler_resolvers.insert(command, Box::new(handler));
     }
 }
 
@@ -86,32 +133,21 @@ impl Handler for TS6Handler {
     fn handle(&mut self, network: &Network, line: &[u8]) -> Result<Outcome, Error> {
         let line = Line::try_from_rfc1459(line)?;
 
-        match line.command.as_slice() {
-            b"AWAY" => away::handle(&line),
-            b"BAN" => ban::handle(&line),
-            b"BMASK" => bmask::handle(&line),
-            b"CAPAB" => capab::handle(self, &line),
-            b"CHGHOST" => chghost::handle(&line),
-            b"EBMASK" => ebmask::handle(&line),
-            b"ENCAP" => encap::handle(&line),
-            b"EUID" => euid::handle(&line),
-            b"JOIN" => join::handle(&line),
-            b"KILL" => kill::handle(network, &line),
-            b"MODE" => mode::handle(&line),
-            b"NICK" => nick::handle(&line),
-            b"OPER" => oper::handle(&line),
-            b"PART" => part::handle(network, &line),
-            b"PASS" => pass::handle(self, &line),
-            b"PING" => ping::handle(network, &line),
-            b"QUIT" => quit::handle(network, &line),
-            b"SERVER" => server::handle(self, &line),
-            b"SID" => sid::handle(&line),
-            b"SJOIN" => sjoin::handle(network, &line),
-            b"SQUIT" => squit::handle(network, &line),
-            b"TB" => tb::handle(&line),
-            b"TMODE" => tmode::handle(network, &line),
-            b"TOPIC" => topic::handle(network, &line),
-            _ => Ok(Outcome::Unhandled),
+        if let Some(handler_resolver) = self.handler_resolvers.get_mut(line.command.as_slice()) {
+            let mut handler_resolver = handler_resolver;
+            loop {
+                match handler_resolver.resolve(network, &line)? {
+                    Some(LineHandlerResolution::SeeOther(resolver_inner)) => {
+                        handler_resolver = resolver_inner;
+                    }
+                    Some(LineHandlerResolution::Handler(handler)) => {
+                        break handler.handle(network, &line);
+                    }
+                    None => break Ok(Outcome::Unhandled),
+                };
+            }
+        } else {
+            Ok(Outcome::Unhandled)
         }
     }
 }

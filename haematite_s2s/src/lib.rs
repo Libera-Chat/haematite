@@ -13,6 +13,7 @@
 
 pub mod handler;
 mod line;
+mod line_handler;
 mod rfc1459;
 pub mod ts6;
 mod util;

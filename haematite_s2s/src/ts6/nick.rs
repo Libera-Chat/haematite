@@ -1,17 +1,26 @@
-use haematite_models::irc::network::Diff as NetDiff;
+use haematite_models::irc::network::{Diff as NetDiff, Network};
 use haematite_models::irc::user::Diff as UserDiff;
 
-use crate::handler::{Error, Outcome};
+use crate::handler::{ArgumentCountResolver, Error, LineHandler, LineHandlerResolver, Outcome};
 use crate::line::Line;
 use crate::util::DecodeHybrid as _;
 
-pub fn handle(line: &Line) -> Result<Outcome, Error> {
-    Line::assert_arg_count(line, 2)?;
-    let uid = line.source.as_ref().ok_or(Error::MissingSource)?.decode();
-    let nick = line.args[0].decode();
+pub(super) struct Handler {}
 
-    Ok(Outcome::State(vec![NetDiff::InternalUser(
-        uid,
-        UserDiff::Nick(nick),
-    )]))
+impl Handler {
+    pub fn resolver() -> impl LineHandlerResolver {
+        ArgumentCountResolver::from_handler(2, 2, Self {})
+    }
+}
+
+impl LineHandler for Handler {
+    fn handle(&mut self, _network: &Network, line: &Line) -> Result<Outcome, Error> {
+        let uid = line.source.as_ref().ok_or(Error::MissingSource)?.decode();
+        let nick = line.args[0].decode();
+
+        Ok(Outcome::State(vec![NetDiff::InternalUser(
+            uid,
+            UserDiff::Nick(nick),
+        )]))
+    }
 }

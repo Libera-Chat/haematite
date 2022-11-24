@@ -27,24 +27,3 @@ pub fn split_chars(mode: &str) -> impl Iterator<Item = (char, bool)> {
 
     result.into_iter()
 }
-
-pub enum PairError {
-    InsufficientArgs,
-}
-
-pub fn pair_args<'a>(
-    modes: &[Change],
-    args: &'a [Vec<u8>],
-) -> Result<Vec<Option<&'a Vec<u8>>>, PairError> {
-    let mut out = Vec::new();
-    let mut args = args.iter();
-
-    for mode in modes {
-        out.push(match mode.arg_type {
-            ArgType::None => None,
-            _ => Some(args.next().ok_or(PairError::InsufficientArgs)?),
-        });
-    }
-
-    Ok(out)
-}

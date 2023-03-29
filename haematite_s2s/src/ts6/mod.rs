@@ -71,7 +71,7 @@ impl Handler for TS6Handler {
         let me = &network.servers[&network.me];
 
         Ok(vec![
-            format!("PASS {} TS 6 :{}", password, me.id),
+            format!("PASS {password} TS 6 :{}", me.id),
             format!("CAPAB :{}", CAPABS.join(" ")),
             format!("SERVER {} 1 :{}", me.name, me.description),
             format!(

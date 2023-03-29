@@ -18,7 +18,7 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
         .get(&network.me)
         .ok_or(StateError::UnknownServer)?;
     Ok(Outcome::Response(vec![format!(
-        ":{} PONG {} {}",
-        me.id, me.name, source
+        ":{} PONG {} {source}",
+        me.id, me.name,
     )]))
 }

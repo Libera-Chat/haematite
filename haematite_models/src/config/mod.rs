@@ -42,8 +42,8 @@ pub enum Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Error::Io(e) => write!(f, "io error: {}", e),
-            Error::Parse(e) => write!(f, "parse error: {}", e),
+            Error::Io(e) => write!(f, "io error: {e}"),
+            Error::Parse(e) => write!(f, "parse error: {e}"),
             Error::InvalidName => write!(f, "invalid server name"),
             Error::InvalidId => write!(f, "invalid server id"),
         }

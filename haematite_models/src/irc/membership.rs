@@ -1,4 +1,5 @@
 use super::error::Error;
+use super::network::DiffOp;
 use crate::meta::permissions::Path;
 use serde::{Serialize, Serializer};
 
@@ -24,7 +25,7 @@ impl Membership {
     ///
     /// Will return `Err` if the presented diff is not applicable to the
     /// current network state, or if the result data cannot be serialized.
-    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(Path, S::Ok), Error>
+    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(Path, DiffOp<S::Ok>), Error>
     where
         S: Serializer,
     {
@@ -33,7 +34,7 @@ impl Membership {
                 let (index, value) = match action {
                     Action::Add => {
                         self.status.push(char);
-                        (self.status.len() - 1, char.serialize(ser)?)
+                        (self.status.len() - 1, DiffOp::Add(char.serialize(ser)?))
                     }
                     Action::Remove => {
                         let index = self
@@ -41,8 +42,8 @@ impl Membership {
                             .iter()
                             .position(|&c| c == char)
                             .ok_or(Error::UnknownMode)?;
-                        self.status.remove(index);
-                        (index, ser.serialize_none()?)
+                        let value = self.status.remove(index).serialize(ser)?;
+                        (index, DiffOp::Remove(value))
                     }
                 };
                 (

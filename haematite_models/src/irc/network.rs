@@ -38,6 +38,13 @@ pub enum Diff {
     ExternalChannel(String, Action<Channel>),
 }
 
+#[derive(Debug, Serialize)]
+pub enum DiffOp<T> {
+    Add(T),
+    Remove(T),
+    Replace(T),
+}
+
 impl Network {
     pub fn new(me: Server) -> Self {
         let sid = me.id.clone();
@@ -53,7 +60,7 @@ impl Network {
     ///
     /// Will return `Err` if the presented diff is not applicable to the
     /// current network state, or if the result data cannot be serialized.
-    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(Path, S::Ok), Error>
+    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(Path, DiffOp<S::Ok>), Error>
     where
         S: Serializer,
     {
@@ -63,11 +70,15 @@ impl Network {
                     Action::Add(ban) => {
                         let value = ban.serialize(ser)?;
                         self.bans.insert(mask.clone(), ban);
-                        value
+                        DiffOp::Add(value)
                     }
                     Action::Remove => {
-                        self.bans.remove(&mask);
-                        ser.serialize_none()?
+                        let value = self
+                            .bans
+                            .remove(&mask)
+                            .ok_or(Error::UnknownBan)?
+                            .serialize(ser)?;
+                        DiffOp::Remove(value)
                     }
                 };
                 (
@@ -81,11 +92,15 @@ impl Network {
                     Action::Add(server) => {
                         let value = server.serialize(ser)?;
                         self.servers.insert(name.clone(), server);
-                        value
+                        DiffOp::Add(value)
                     }
                     Action::Remove => {
-                        self.servers.remove(&name);
-                        ser.serialize_none()?
+                        let value = self
+                            .servers
+                            .remove(&name)
+                            .ok_or(Error::UnknownServer)?
+                            .serialize(ser)?;
+                        DiffOp::Remove(value)
                     }
                 };
                 (
@@ -116,11 +131,15 @@ impl Network {
                     Action::Add(user) => {
                         let value = user.serialize(ser)?;
                         self.users.insert(uid.clone(), user);
-                        value
+                        DiffOp::Add(value)
                     }
                     Action::Remove => {
-                        self.users.remove(&uid);
-                        ser.serialize_none()?
+                        let value = self
+                            .users
+                            .remove(&uid)
+                            .ok_or(Error::UnknownUser)?
+                            .serialize(ser)?;
+                        DiffOp::Remove(value)
                     }
                 };
                 (
@@ -148,11 +167,15 @@ impl Network {
                     Action::Add(channel) => {
                         let value = channel.serialize(ser)?;
                         self.channels.insert(name.clone(), channel);
-                        value
+                        DiffOp::Add(value)
                     }
                     Action::Remove => {
-                        self.channels.remove(&name);
-                        ser.serialize_none()?
+                        let value = self
+                            .channels
+                            .remove(&name)
+                            .ok_or(Error::UnknownChannel)?
+                            .serialize(ser)?;
+                        DiffOp::Remove(value)
                     }
                 };
                 (

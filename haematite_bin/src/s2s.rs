@@ -1,5 +1,6 @@
 use std::io::Error as IoError;
 use std::sync::{Arc, RwLock};
+use std::time::Instant;
 
 use colored::{Color, Colorize};
 use rustls::client::InvalidDnsNameError;
@@ -9,7 +10,7 @@ use tokio::sync::mpsc;
 use tokio_rustls::TlsConnector;
 
 use haematite_models::config::Config;
-use haematite_models::irc::network::Network;
+use haematite_models::irc::network::{DiffOp, Network};
 use haematite_models::meta::permissions::Path;
 use haematite_s2s::handler::{Error as HandlerError, Handler, Outcome};
 use haematite_s2s::DecodeHybrid;
@@ -57,7 +58,7 @@ where
 pub async fn run(
     config: &Config,
     network_lock: Arc<RwLock<Network>>,
-    state_stream: mpsc::Sender<(Path, WrapType)>,
+    state_stream: mpsc::Sender<(Path, DiffOp<WrapType>)>,
     mut handler: impl Handler,
 ) -> Result<(), Error> {
     let tconfig = make_config(&config.uplink.ca, &config.tls)?;
@@ -87,12 +88,17 @@ pub async fn run(
         // chop off \r\n
         buffer.drain(len - 2..len);
 
+        let now = Instant::now();
         let outcome = {
             let network = network_lock.read().unwrap();
             handler
                 .handle(&network, &buffer)
                 .map_err(|e| Error::HandleLine(DecodeHybrid::decode(&buffer), e))?
         };
+        println!(
+            "line handled in {}µs",
+            (now.elapsed().as_nanos() as f64) / 1000.0
+        );
 
         let printable = DecodeHybrid::decode(&buffer);
         match outcome {
@@ -105,19 +111,24 @@ pub async fn run(
                     let mut network = network_lock.write().unwrap();
 
                     for diff in diffs {
-                        diffs_out.push(network.update(diff, &mut Serializer {}).unwrap());
+                        let now = Instant::now();
+                        diffs_out.push((
+                            network.update(diff, &mut Serializer {}).unwrap(),
+                            (now.elapsed().as_nanos() as f64) / 1000.0,
+                        ));
                     }
 
-                    // scope to make `network` is dropped before below await
+                    // scope to make sure `network` is dropped before below await
                 }
 
-                for (path, value) in diffs_out {
+                for ((path, value), elapsed) in diffs_out {
                     println!(
                         "{} {}",
                         path.to_string().color(Color::Blue),
                         serde_json::to_string(&value).unwrap()
                     );
                     state_stream.send((path, value)).await.unwrap();
+                    println!("diff handled in {}µs", elapsed);
                 }
             }
             Outcome::Response(responses) => {

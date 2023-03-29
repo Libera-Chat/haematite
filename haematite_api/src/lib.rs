@@ -1,10 +1,11 @@
 use std::sync::{Arc, PoisonError, RwLock};
+use std::time::Instant;
 
 use serde::Serialize;
-use serde_json::Error as JsonError;
+use serde_json::{json, Error as JsonError};
 use tokio::sync::mpsc;
 
-use haematite_models::irc::network::Network;
+use haematite_models::irc::network::{DiffOp, Network};
 use haematite_models::meta::permissions::Path;
 use haematite_models::meta::user::User;
 use haematite_ser::error::Error as SerError;
@@ -18,7 +19,7 @@ pub enum Format {
 pub struct Api {
     network: Arc<RwLock<Network>>,
     format: Format,
-    streams: Vec<(User, mpsc::Sender<(Path, String)>)>,
+    streams: Vec<(User, mpsc::Sender<String>)>,
 }
 
 #[derive(Debug)]
@@ -65,20 +66,38 @@ impl Api {
 
     pub async fn read_stream(
         api: Arc<RwLock<Self>>,
-        stream: &mut mpsc::Receiver<(Path, WrapType)>,
+        stream: &mut mpsc::Receiver<(Path, DiffOp<WrapType>)>,
     ) -> Result<(), Error> {
         let mut dead = Vec::new();
 
-        while let Some((path, mut wrap)) = stream.recv().await {
+        while let Some((path, diff_op)) = stream.recv().await {
+            let path_str = path.to_string();
+            let (op, mut value) = match diff_op {
+                DiffOp::Add(value) => ("add", value),
+                DiffOp::Remove(value) => ("remove", value),
+                DiffOp::Replace(value) => ("replace", value),
+            };
+
             let mut api = api.write()?;
             for (i, (user, sender)) in api.streams.iter().enumerate() {
+                let now = Instant::now();
                 if let Some(tree) = user.permissions.walk(&path) {
-                    if wrap.update_with(tree) == Allow::Yes
-                        && sender.try_send((path.clone(), api.format(&wrap)?)).is_err()
-                    {
-                        dead.push(i);
+                    if value.update_with(tree) == Allow::Yes {
+                        let out = json!({
+                            "op": op,
+                            "path": path_str,
+                            "value": value,
+                        })
+                        .to_string();
+                        if sender.try_send(out).is_err() {
+                            dead.push(i);
+                        }
                     }
                 }
+                println!(
+                    "handled subscriber in {}µs",
+                    (now.elapsed().as_nanos() as f64) / 1000.0
+                );
             }
 
             /* if `dead` is `[1, 2]` then after we remove `1`, `2`'s index
@@ -91,7 +110,7 @@ impl Api {
         Ok(())
     }
 
-    pub fn subscribe_stream(&mut self, user: User) -> mpsc::Receiver<(Path, String)> {
+    pub fn subscribe_stream(&mut self, user: User) -> mpsc::Receiver<String> {
         let (tx, rx) = mpsc::channel(1);
         self.streams.push((user, tx));
         rx

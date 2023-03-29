@@ -11,7 +11,7 @@ use warp::{Filter, Reply as _};
 use haematite_api::{Api, Error as ApiError, Format};
 use haematite_dal::Database;
 use haematite_models::config::Config;
-use haematite_models::irc::network::Network;
+use haematite_models::irc::network::{DiffOp, Network};
 use haematite_models::meta::permissions::Path;
 use haematite_models::meta::user::User;
 use haematite_ser::WrapType;
@@ -80,7 +80,7 @@ fn display(res: Result<warp::reply::Response, Error>) -> warp::reply::Response {
 pub async fn run<D: SqlxDatabase>(
     config: &Config,
     network: Arc<RwLock<Network>>,
-    state_stream: &mut mpsc::Receiver<(Path, WrapType)>,
+    state_stream: &mut mpsc::Receiver<(Path, DiffOp<WrapType>)>,
     database: Database<D>,
 ) -> Result<(), Infallible> {
     let database = Arc::new(database);
@@ -108,13 +108,9 @@ pub async fn run<D: SqlxDatabase>(
                 .on_upgrade(|ws2| async move {
                     let (mut tx, _rx) = ws2.split();
 
-                    while let Some((path, value)) = user_stream.recv().await {
+                    while let Some(value) = user_stream.recv().await {
                         if tx
-                            .send(Message::text(format!(
-                                "{} {}",
-                                path.to_string(),
-                                value
-                            )))
+                            .send(Message::text(value))
                             .await
                             .is_err()
                         {

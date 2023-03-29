@@ -1,4 +1,5 @@
 use super::error::Error;
+use super::network::DiffOp;
 use crate::meta::permissions::Path;
 use serde::{Serialize, Serializer};
 
@@ -67,7 +68,7 @@ impl User {
     ///
     /// Will return `Err` if the presented diff is not applicable to the
     /// current network state, or if the result data cannot be serialized.
-    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(Path, S::Ok), Error>
+    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(Path, DiffOp<S::Ok>), Error>
     where
         S: Serializer,
     {
@@ -76,35 +77,35 @@ impl User {
                 self.nick = nick;
                 (
                     Path::ExternalVertex("nick".to_owned()),
-                    self.nick.serialize(ser)?,
+                    DiffOp::Replace(self.nick.serialize(ser)?),
                 )
             }
             Diff::User(user) => {
                 self.user = user;
                 (
                     Path::ExternalVertex("user".to_owned()),
-                    self.user.serialize(ser)?,
+                    DiffOp::Replace(self.user.serialize(ser)?),
                 )
             }
             Diff::Host(host) => {
                 self.host = host;
                 (
                     Path::ExternalVertex("host".to_owned()),
-                    self.host.serialize(ser)?,
+                    DiffOp::Replace(self.host.serialize(ser)?),
                 )
             }
             Diff::Account(account) => {
                 self.account = account;
                 (
                     Path::ExternalVertex("account".to_owned()),
-                    self.account.serialize(ser)?,
+                    DiffOp::Replace(self.account.serialize(ser)?),
                 )
             }
             Diff::Mode(char, action) => {
                 let (index, value) = match action {
                     Action::Add => {
                         self.modes.push(char);
-                        (self.modes.len() - 1, char.serialize(ser)?)
+                        (self.modes.len() - 1, DiffOp::Add(char.serialize(ser)?))
                     }
                     Action::Remove => {
                         let index = self
@@ -112,8 +113,8 @@ impl User {
                             .iter()
                             .position(|&c| c == char)
                             .ok_or(Error::UnknownMode)?;
-                        self.modes.remove(index);
-                        (index, ser.serialize_none()?)
+                        let value = self.modes.remove(index).serialize(ser)?;
+                        (index, DiffOp::Remove(value))
                     }
                 };
                 (
@@ -128,14 +129,14 @@ impl User {
                 self.oper = oper;
                 (
                     Path::ExternalVertex("oper".to_owned()),
-                    self.oper.serialize(ser)?,
+                    DiffOp::Replace(self.oper.serialize(ser)?),
                 )
             }
             Diff::Away(away) => {
                 self.away = away;
                 (
                     Path::ExternalVertex("away".to_owned()),
-                    self.away.serialize(ser)?,
+                    DiffOp::Replace(self.away.serialize(ser)?),
                 )
             }
             Diff::Channel(name, action) => {
@@ -143,7 +144,7 @@ impl User {
                     Action::Add => {
                         let value = name.serialize(ser)?;
                         self.channels.push(name);
-                        (self.channels.len() - 1, value)
+                        (self.channels.len() - 1, DiffOp::Add(value))
                     }
                     Action::Remove => {
                         let index = self
@@ -151,8 +152,8 @@ impl User {
                             .iter()
                             .position(|c| c == &name)
                             .ok_or(Error::UnknownChannel)?;
-                        self.channels.remove(index);
-                        (index, ser.serialize_none()?)
+                        let value = self.channels.remove(index).serialize(ser)?;
+                        (index, DiffOp::Remove(value))
                     }
                 };
                 (

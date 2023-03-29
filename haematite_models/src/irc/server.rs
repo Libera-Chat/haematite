@@ -1,4 +1,5 @@
 use super::error::Error;
+use super::network::DiffOp;
 use crate::meta::permissions::Path;
 use serde::{Deserialize, Serialize, Serializer};
 
@@ -34,7 +35,7 @@ impl Server {
     ///
     /// Will return `Err` if the presented diff is not applicable to the
     /// current network state, or if the result data cannot be serialized.
-    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(Path, S::Ok), Error>
+    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(Path, DiffOp<S::Ok>), Error>
     where
         S: Serializer,
     {
@@ -44,7 +45,7 @@ impl Server {
                     Action::Add => {
                         let value = uid.serialize(ser)?;
                         self.users.push(uid);
-                        (self.users.len() - 1, value)
+                        (self.users.len() - 1, DiffOp::Add(value))
                     }
                     Action::Remove => {
                         let index = self
@@ -52,8 +53,8 @@ impl Server {
                             .iter()
                             .position(|u| u == &uid)
                             .ok_or(Error::UnknownUser)?;
-                        self.users.remove(index);
-                        (index, ser.serialize_none()?)
+                        let value = self.users.remove(index).serialize(ser)?;
+                        (index, DiffOp::Remove(value))
                     }
                 };
                 (

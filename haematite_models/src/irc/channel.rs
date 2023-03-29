@@ -5,6 +5,7 @@ use serde::{Serialize, Serializer};
 
 use super::error::Error;
 use super::membership::{Diff as MembershipDiff, Membership};
+use super::network::DiffOp;
 use super::topic::Topic;
 use crate::meta::permissions::Path;
 
@@ -50,7 +51,7 @@ impl Channel {
     ///
     /// Will return `Err` if the presented diff is not applicable to the
     /// current network state, or if the result data cannot be serialized.
-    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(Path, S::Ok), Error>
+    pub fn update<S>(&mut self, diff: Diff, ser: S) -> Result<(Path, DiffOp<S::Ok>), Error>
     where
         S: Serializer,
     {
@@ -59,7 +60,7 @@ impl Channel {
                 self.topic = topic;
                 (
                     Path::ExternalVertex("topic".to_owned()),
-                    self.topic.serialize(ser)?,
+                    DiffOp::Replace(self.topic.serialize(ser)?),
                 )
             }
             Diff::Mode(mode, action) => {
@@ -67,11 +68,15 @@ impl Channel {
                     Action::Add(arg) => {
                         let value = arg.serialize(ser)?;
                         self.modes.insert(mode, arg);
-                        value
+                        DiffOp::Add(value)
                     }
                     Action::Remove => {
-                        self.modes.remove(&mode);
-                        ser.serialize_none()?
+                        let value = self
+                            .modes
+                            .remove(&mode)
+                            .ok_or(Error::UnknownMode)?
+                            .serialize(ser)?;
+                        DiffOp::Remove(value)
                     }
                 };
                 (
@@ -88,11 +93,14 @@ impl Channel {
                     Action::Add(arg) => {
                         let value = arg.serialize(ser)?;
                         map.insert(mask.clone(), arg);
-                        value
+                        DiffOp::Add(value)
                     }
                     Action::Remove => {
-                        map.remove(&mask);
-                        ser.serialize_none()?
+                        let value = map
+                            .remove(&mask)
+                            .ok_or(Error::UnknownMode)?
+                            .serialize(ser)?;
+                        DiffOp::Remove(value)
                     }
                 };
                 (
@@ -126,11 +134,15 @@ impl Channel {
                     Action::Add(membership) => {
                         let value = membership.serialize(ser)?;
                         self.users.insert(uid.clone(), membership);
-                        value
+                        DiffOp::Add(value)
                     }
                     Action::Remove => {
-                        self.users.remove(&uid);
-                        ser.serialize_none()?
+                        let value = self
+                            .users
+                            .remove(&uid)
+                            .ok_or(Error::UnknownUser)?
+                            .serialize(ser)?;
+                        DiffOp::Remove(value)
                     }
                 };
                 (

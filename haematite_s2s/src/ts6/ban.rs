@@ -1,7 +1,7 @@
 use chrono::{Duration as ChronoDuration, NaiveDateTime, Utc};
 use haematite_models::irc::ban::Ban;
 use haematite_models::irc::hostmask::{Error as HostmaskError, Hostmask};
-use haematite_models::irc::network::{Network, Action as NetAction, Diff as NetDiff};
+use haematite_models::irc::network::{Action as NetAction, Diff as NetDiff, Network};
 use haematite_models::irc::oper::Oper;
 use regex::Regex;
 

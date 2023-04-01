@@ -12,9 +12,9 @@ use crate::util::DecodeHybrid;
 
 use super::util::mode::to_changes;
 
-//:00A SJOIN 1658071435 #services +nst :@00AAAAAAB
+//:00A SJOIN 1658071435 #services +nstk password :@00AAAAAAB
 pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
-    Line::assert_arg_count(line, 4)?;
+    Line::assert_arg_count(line, 4..)?;
 
     let channel_name = line.args[1].decode();
     let uids = line.args[line.args.len() - 1]

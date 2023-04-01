@@ -1,7 +1,7 @@
 use chrono::{Duration as ChronoDuration, NaiveDateTime, Utc};
 use haematite_models::irc::ban::Ban;
 use haematite_models::irc::hostmask::{Error as HostmaskError, Hostmask};
-use haematite_models::irc::network::{Action as NetAction, Diff as NetDiff};
+use haematite_models::irc::network::{Network, Action as NetAction, Diff as NetDiff};
 use haematite_models::irc::oper::Oper;
 use regex::Regex;
 
@@ -28,7 +28,7 @@ fn parse_oper(mut oper: &str) -> Result<Oper, HostmaskError> {
     })
 }
 
-pub fn handle(line: &Line) -> Result<Outcome, Error> {
+pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 8)?;
 
     if line.args[0][0] != b'K' {
@@ -54,7 +54,11 @@ pub fn handle(line: &Line) -> Result<Outcome, Error> {
     let mask = format!("{}@{}", line.args[1].decode(), line.args[2].decode());
 
     let action = if duration.is_zero() {
-        NetAction::Remove
+        if network.bans.contains_key(&mask) {
+            NetAction::Remove
+        } else {
+            return Ok(Outcome::Empty);
+        }
     } else if since + duration < Utc::now().naive_utc() {
         // expired
         return Ok(Outcome::Empty);

@@ -88,7 +88,7 @@ impl Handler for TS6Handler {
 
         match line.command.as_slice() {
             b"AWAY" => away::handle(&line),
-            b"BAN" => ban::handle(&line),
+            b"BAN" => ban::handle(network, &line),
             b"BMASK" => bmask::handle(&line),
             b"CAPAB" => capab::handle(self, &line),
             b"CHGHOST" => chghost::handle(&line),

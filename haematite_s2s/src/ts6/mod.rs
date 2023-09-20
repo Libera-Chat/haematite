@@ -77,7 +77,7 @@ impl Handler for TS6Handler {
             format!(
                 "SVINFO 6 6 0 {}",
                 now.duration_since(SystemTime::UNIX_EPOCH)
-                    .map_err(|_e| "GRAN PROBLEMA DE TIEMPO".to_string())?
+                    .map_err(|_e| "BIG TIME ISSUE".to_string())?
                     .as_secs()
             ),
         ])

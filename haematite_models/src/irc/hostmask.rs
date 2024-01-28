@@ -1,4 +1,3 @@
-use regex::Regex;
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -9,23 +8,50 @@ pub struct Hostmask {
 }
 
 pub enum Error {
-    //TODO: better name
-    Bad,
+    InvalidFormat,
+}
+
+enum Stage {
+    Nick,
+    User,
+    Host,
 }
 
 impl TryFrom<&str> for Hostmask {
     type Error = Error;
 
     fn try_from(hostmask: &str) -> Result<Self, Self::Error> {
-        //TODO: precompile
-        let regex = Regex::new(r"^([^!]+)!([^@]{1,10})@(\S+)$").unwrap();
-        match regex.captures(hostmask) {
-            Some(hostmask) => Ok(Self {
-                nick: hostmask.get(1).unwrap().as_str().to_string(),
-                user: hostmask.get(2).unwrap().as_str().to_string(),
-                host: hostmask.get(3).unwrap().as_str().to_string(),
-            }),
-            None => Err(Error::Bad),
+        let mut result = Self {
+            nick: String::new(),
+            user: String::new(),
+            host: String::new(),
+        };
+        let mut stage = Stage::Nick;
+
+        for char in hostmask.chars() {
+            match stage {
+                Stage::Nick => {
+                    if char == '!' {
+                        stage = Stage::User;
+                    } else {
+                        result.nick.push(char);
+                    }
+                }
+                Stage::User => {
+                    if char == '@' {
+                        stage = Stage::Host;
+                    } else {
+                        result.user.push(char);
+                    }
+                }
+                Stage::Host => result.host.push(char),
+            }
+        }
+
+        if result.host.is_empty() {
+            Err(Error::InvalidFormat)
+        } else {
+            Ok(result)
         }
     }
 }

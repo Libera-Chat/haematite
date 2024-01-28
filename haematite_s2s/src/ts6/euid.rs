@@ -1,13 +1,18 @@
-use haematite_models::irc::network::{Action as NetAction, Diff as NetDiff};
-use haematite_models::irc::server::{Action as ServAction, Diff as ServDiff};
+use haematite_events::EventStore;
+use haematite_models::irc::network::Network;
 use haematite_models::irc::user::User;
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::util::mode::split_chars;
-use crate::util::DecodeHybrid as _;
+use crate::util::{DecodeHybrid as _, NoneOr, TrueOr};
 
-pub fn handle(line: &Line) -> Result<Outcome, Error> {
+//:420 EUID jess 1 1706456497 +QZaioswz MRuDr7FpIS husky.vpn.lolnerd.net fd84:9d71:8b8:1::1 420AAAAAB * * :big meow
+pub fn handle<E: EventStore>(
+    event_store: &mut E,
+    network: &mut Network,
+    line: &Line,
+) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 11)?;
 
     let sid = line.source.as_ref().ok_or(Error::MissingSource)?.decode();
@@ -30,14 +35,50 @@ pub fn handle(line: &Line) -> Result<Outcome, Error> {
         rdns => Some(rdns.decode()),
     };
 
-    let mut user = User::new(nick, user, host, real, account, ip, rdns, sid.clone());
+    let mut user = User {
+        nick,
+        user,
+        host,
+        real,
+        account,
+        ip,
+        rdns,
+        server: sid.clone(),
+        ..User::default()
+    };
 
     for (mode, _) in split_chars(&line.args[3].decode()) {
-        user.modes.push(mode);
+        user.modes.insert(mode);
     }
 
-    Ok(Outcome::State(vec![
-        NetDiff::ExternalUser(uid.clone(), NetAction::Add(user)),
-        NetDiff::InternalServer(sid, ServDiff::User(uid, ServAction::Add)),
-    ]))
+    let modes = &line.args[3];
+    event_store.store(
+        "user.connected",
+        haematite_models::event::user::Connected {
+            uid: &uid,
+            nick: &user.nick,
+            user: &user.user,
+            real: &user.real,
+            host: &user.host,
+            ip: &user.ip,
+            rdns: &user.rdns,
+            account: &user.account,
+            tls: modes.contains(&b'z'),
+        },
+    )?;
+
+    network
+        .users
+        .insert(uid.clone(), user)
+        .none_or(Error::InvalidState)?;
+
+    network
+        .servers
+        .get_mut(&sid)
+        .ok_or(Error::InvalidState)?
+        .users
+        .insert(uid)
+        .true_or(Error::InvalidState)?;
+
+    Ok(Outcome::Handled)
 }

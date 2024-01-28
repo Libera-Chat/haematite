@@ -7,11 +7,14 @@ uplink:
   host: husky.vpn.lolnerd.net
   port: 6697
   password: 8m1RXdPW2HG8lakqJF53N6DYZRA6xRy0ORjIqod65RWok482rhgBQUfNTYcaJorJ
-  ca: .ca/pki/ca.crt
 
-tls:
+mtls:
+  ca: .ca/pki/ca.crt
   crt: .ca/pki/issued/husky.vpn.lolnerd.net.crt
   key: .ca/pki/private/husky.vpn.lolnerd.net.key
+
+amqp:
+  address: "amqp://haematite:hunter2@husky.vpn.lolnerd.net:5672"
 
 bind: "[fd84:9d71:8b8:1::1]:8085"
 database: postgress:///jess

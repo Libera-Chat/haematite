@@ -1,43 +1,47 @@
-use haematite_models::irc::channel::{Action as ChanAction, Diff as ChanDiff};
+use haematite_events::EventStore;
 use haematite_models::irc::error::Error as StateError;
-use haematite_models::irc::network::{Action as NetAction, Diff as NetDiff, Network};
-use haematite_models::irc::server::{Action as ServAction, Diff as ServDiff};
+use haematite_models::irc::network::Network;
 
-use super::util::channel::{ForgetContext, Forgettable as _};
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
-use crate::util::DecodeHybrid as _;
+use crate::util::{DecodeHybrid as _, TrueOr};
 
-pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
+pub fn handle<E: EventStore>(
+    event_store: &mut E,
+    network: &mut Network,
+    line: &Line,
+) -> Result<Outcome, Error> {
     let uid = line.source.as_ref().ok_or(Error::MissingSource)?.decode();
     let user = network.users.get(&uid).ok_or(StateError::UnknownUser)?;
-
-    let mut diff = Vec::new();
+    let server = user.server.clone();
 
     for channel_name in &user.channels {
         // this .ok_or() shouldn't be needed.
         // we've got a state desync if it is ever hit
         let channel = network
             .channels
-            .get(channel_name)
-            .ok_or(StateError::UnknownChannel)?;
-        diff.push(if channel.is_forgettable(ForgetContext::Leave(1)) {
-            NetDiff::ExternalChannel(channel_name.clone(), NetAction::Remove)
-        } else {
-            NetDiff::InternalChannel(
-                channel_name.clone(),
-                ChanDiff::ExternalUser(uid.clone(), ChanAction::Remove),
-            )
-        });
+            .get_mut(channel_name)
+            .ok_or(Error::InvalidState)?;
+        channel.users.remove(&uid).ok_or(Error::InvalidState)?;
+
+        if channel.users.is_empty() && !channel.modes.contains_key(&'P') {
+            network.channels.remove(channel_name);
+        }
     }
 
-    diff.append(&mut vec![
-        NetDiff::InternalServer(
-            user.server.clone(),
-            ServDiff::User(uid.clone(), ServAction::Remove),
-        ),
-        NetDiff::ExternalUser(uid, NetAction::Remove),
-    ]);
+    network.users.remove(&uid).ok_or(Error::InvalidState)?;
+    network
+        .servers
+        .get_mut(&server)
+        .ok_or(Error::InvalidState)?
+        .users
+        .remove(&uid)
+        .true_or(Error::InvalidState)?;
 
-    Ok(Outcome::State(diff))
+    event_store.store(
+        "user.disconnected",
+        haematite_models::event::user::Disconnected { uid: &uid },
+    )?;
+
+    Ok(Outcome::Handled)
 }

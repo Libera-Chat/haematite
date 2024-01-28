@@ -1,48 +1,46 @@
-use std::collections::HashMap;
-
+use haematite_events::EventStore;
 use haematite_models::irc::error::Error as StateError;
-use haematite_models::irc::network::{Action as NetAction, Diff as NetDiff, Network};
+use haematite_models::irc::network::Network;
 
-use super::util::channel::{ForgetContext, Forgettable as _};
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::util::DecodeHybrid as _;
 
-pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
+pub fn handle<E: EventStore>(
+    event_store: &mut E,
+    network: &mut Network,
+    line: &Line,
+) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 1..2)?;
 
     let sid = line.args[0].decode();
+
+    event_store.store(
+        "server.disconnected",
+        haematite_models::event::server::Disconnected { sid: &sid },
+    )?;
+
     let server = network.servers.get(&sid).ok_or(StateError::UnknownServer)?;
 
-    let mut diff = vec![NetDiff::ExternalServer(sid, NetAction::Remove)];
+    for uid in &server.users {
+        event_store.store("user.lost", haematite_models::event::user::Lost { uid })?;
 
-    let mut channel_users = HashMap::new();
-    for nick in &server.users {
-        // this .ok_or() shouldn't be needed.
-        // we've got a state desync if it is ever hit
-        let user = network.users.get(nick).ok_or(StateError::UnknownUser)?;
-        diff.push(NetDiff::ExternalUser(nick.clone(), NetAction::Remove));
+        network.users.remove(uid).ok_or(Error::InvalidState)?;
+        let user = network.users.get(uid).ok_or(StateError::UnknownUser)?;
 
         for channel_name in &user.channels {
-            let count = channel_users.entry(channel_name).or_insert(0);
-            *count += 1;
+            let channel = network
+                .channels
+                .get_mut(channel_name)
+                .ok_or(Error::InvalidState)?;
+
+            channel.users.remove(uid).ok_or(Error::InvalidState)?;
+
+            if channel.users.is_empty() && !channel.modes.contains_key(&'P') {
+                network.channels.remove(channel_name);
+            }
         }
     }
 
-    for (channel_name, user_count) in channel_users {
-        // this .ok_or() shouldn't be needed.
-        // we've got a state desync if it is ever hit
-        let channel = network
-            .channels
-            .get(channel_name)
-            .ok_or(StateError::UnknownChannel)?;
-        if channel.is_forgettable(ForgetContext::Leave(user_count)) {
-            diff.push(NetDiff::ExternalChannel(
-                channel_name.to_string(),
-                NetAction::Remove,
-            ));
-        }
-    }
-
-    Ok(Outcome::State(diff))
+    Ok(Outcome::Handled)
 }

@@ -1,27 +1,41 @@
-use haematite_models::irc::channel::{Action as ChanAction, Diff as ChanDiff};
+use haematite_events::EventStore;
 use haematite_models::irc::membership::Membership;
-use haematite_models::irc::network::Diff as NetDiff;
-use haematite_models::irc::user::{Action as UserAction, Diff as UserDiff};
+use haematite_models::irc::network::Network;
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
-use crate::util::DecodeHybrid as _;
+use crate::util::{DecodeHybrid as _, FalseOr};
 
 //:420AAAABG JOIN 1657651885 #test +
-pub fn handle(line: &Line) -> Result<Outcome, Error> {
+pub fn handle<E: EventStore>(
+    event_store: &mut E,
+    network: &mut Network,
+    line: &Line,
+) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 3)?;
 
     let uid = line.source.as_ref().ok_or(Error::MissingSource)?.decode();
-    let channel = line.args[1].decode();
+    let channel_name = line.args[1].decode();
 
-    Ok(Outcome::State(vec![
-        NetDiff::InternalUser(
-            uid.clone(),
-            UserDiff::Channel(channel.clone(), UserAction::Add),
-        ),
-        NetDiff::InternalChannel(
-            channel,
-            ChanDiff::ExternalUser(uid, ChanAction::Add(Membership::new())),
-        ),
-    ]))
+    let user = network.users.get_mut(&uid).ok_or(Error::InvalidState)?;
+    let channel = network
+        .channels
+        .get_mut(&channel_name)
+        .ok_or(Error::InvalidState)?;
+
+    event_store.store(
+        "user.join",
+        haematite_models::event::user::Join {
+            uid: &uid,
+            channel: &channel_name,
+        },
+    )?;
+
+    user.channels
+        .insert(channel_name)
+        .false_or(Error::InvalidState)?;
+
+    channel.users.insert(uid, Membership::default());
+
+    Ok(Outcome::Handled)
 }

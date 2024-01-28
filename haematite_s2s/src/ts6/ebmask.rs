@@ -1,15 +1,25 @@
 use chrono::NaiveDateTime;
-use haematite_models::irc::channel::{Action as ChanAction, Diff as ChanDiff, ModeMetadata};
-use haematite_models::irc::network::Diff as NetDiff;
+use haematite_events::EventStore;
+use haematite_models::irc::channel::ModeMetadata;
+use haematite_models::irc::network::Network;
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::util::DecodeHybrid as _;
 
-pub fn handle(line: &Line) -> Result<Outcome, Error> {
+pub fn handle<E: EventStore>(
+    event_store: &mut E,
+    network: &mut Network,
+    line: &Line,
+) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 4)?;
 
     let channel_name = line.args[1].decode();
+    let channel = network
+        .channels
+        .get_mut(&channel_name)
+        .ok_or(Error::InvalidState)?;
+
     let mode = line.args[2][0] as char;
     let parts = line.args[3].split(|c| c == &b' ').collect::<Vec<&[u8]>>();
 
@@ -18,7 +28,6 @@ pub fn handle(line: &Line) -> Result<Outcome, Error> {
         return Err(Error::InvalidArgument);
     }
 
-    let mut diff = Vec::new();
     for chunk in chunks {
         let mask = chunk[0].decode();
         let since = NaiveDateTime::from_timestamp(
@@ -30,15 +39,21 @@ pub fn handle(line: &Line) -> Result<Outcome, Error> {
         );
         let setter = chunk[2].decode();
 
-        diff.push(NetDiff::InternalChannel(
-            channel_name.clone(),
-            ChanDiff::ModeList(
-                mode,
-                mask,
-                ChanAction::Add(Some(ModeMetadata { since, setter })),
-            ),
-        ));
+        event_store.store(
+            "channel.list_mode.add",
+            haematite_models::event::channel::AddListMode {
+                name: &channel_name,
+                mode: &mode,
+                mask: &mask,
+            },
+        )?;
+
+        channel
+            .mode_lists
+            .get_mut(&mode)
+            .ok_or(Error::InvalidState)?
+            .insert(mask, Some(ModeMetadata { since, setter }));
     }
 
-    Ok(Outcome::State(diff))
+    Ok(Outcome::Handled)
 }

@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 chrono = { version = "0.4.19", features = ["serde"] }
+lazy_static = "1.4.0"
 linked-hash-map = { version = "0.5.6", features = ["serde_impl"] }
-linked_hash_set = { version = "0.1.4", features = ["serde"] }
 regex = "1.5.6"
 serde = { version = "1.0", features = ["derive"] }

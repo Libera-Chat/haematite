@@ -1,36 +1,47 @@
-use haematite_models::irc::network::Diff as NetDiff;
-use haematite_models::irc::user::{Action as UserAction, Diff as UserDiff};
+use haematite_events::EventStore;
+use haematite_models::irc::network::Network;
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::util::mode::split_chars;
-use crate::util::DecodeHybrid as _;
+use crate::util::{DecodeHybrid as _, TrueOr};
 
-pub fn handle(line: &Line) -> Result<Outcome, Error> {
+pub fn handle<E: EventStore>(
+    event_store: &mut E,
+    network: &mut Network,
+    line: &Line,
+) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 2)?;
 
     let uid = line.args[0].decode();
+    let user = network.users.get_mut(&uid).ok_or(Error::InvalidState)?;
 
-    let mut deopered = false;
-    let mut diff = Vec::new();
     for (mode, remove) in split_chars(&line.args[1].decode()) {
-        let action = if remove {
-            deopered |= mode == 'o';
-            UserAction::Remove
+        if remove {
+            event_store.store(
+                "user.mode.remove",
+                haematite_models::event::user::RemoveMode {
+                    uid: &uid,
+                    mode: &mode,
+                },
+            )?;
+
+            if mode == 'o' {
+                user.oper = None;
+            }
+            user.modes.remove(&mode).true_or(Error::InvalidState)?;
         } else {
-            UserAction::Add
-        };
+            event_store.store(
+                "user.mode.add",
+                haematite_models::event::user::AddMode {
+                    uid: &uid,
+                    mode: &mode,
+                },
+            )?;
 
-        diff.push(NetDiff::InternalUser(
-            uid.clone(),
-            UserDiff::Mode(mode, action),
-        ));
+            user.modes.insert(mode).true_or(Error::InvalidState)?;
+        }
     }
 
-    if deopered {
-        // they've lost umode +o, thus are no longer an oper
-        diff.push(NetDiff::InternalUser(uid, UserDiff::Oper(None)));
-    }
-
-    Ok(Outcome::State(diff))
+    Ok(Outcome::Handled)
 }

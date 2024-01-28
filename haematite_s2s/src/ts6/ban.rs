@@ -1,7 +1,8 @@
 use chrono::{Duration as ChronoDuration, NaiveDateTime, Utc};
+use haematite_events::EventStore;
 use haematite_models::irc::ban::Ban;
 use haematite_models::irc::hostmask::{Error as HostmaskError, Hostmask};
-use haematite_models::irc::network::{Action as NetAction, Diff as NetDiff, Network};
+use haematite_models::irc::network::Network;
 use haematite_models::irc::oper::Oper;
 use regex::Regex;
 
@@ -28,7 +29,11 @@ fn parse_oper(mut oper: &str) -> Result<Oper, HostmaskError> {
     })
 }
 
-pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
+pub fn handle<E: EventStore>(
+    event_store: &mut E,
+    network: &mut Network,
+    line: &Line,
+) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 8)?;
 
     if line.args[0][0] != b'K' {
@@ -53,15 +58,17 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
 
     let mask = format!("{}@{}", line.args[1].decode(), line.args[2].decode());
 
-    let action = if duration.is_zero() {
+    event_store.store(
+        "ban.add",
+        haematite_models::event::network::AddBan { mask: &mask },
+    )?;
+
+    if duration.is_zero() {
         if network.bans.contains_key(&mask) {
-            NetAction::Remove
-        } else {
-            return Ok(Outcome::Empty);
+            network.bans.remove(&mask);
         }
     } else if since + duration < Utc::now().naive_utc() {
         // expired
-        return Ok(Outcome::Empty);
     } else {
         let setter =
             parse_oper(line.args[6].decode().as_str()).map_err(|_| Error::InvalidArgument)?;
@@ -74,8 +81,8 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
             setter,
         };
 
-        NetAction::Add(ban)
+        network.bans.insert(mask, ban);
     };
 
-    Ok(Outcome::State(vec![NetDiff::Ban(mask, action)]))
+    Ok(Outcome::Handled)
 }

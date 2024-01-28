@@ -1,9 +1,9 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
+use haematite_events::EventStore;
 use haematite_models::irc::channel::Channel;
 use haematite_models::irc::membership::Membership;
-use haematite_models::irc::network::{Action as NetAction, Diff as NetDiff, Network};
-use haematite_models::irc::user::{Action as UserAction, Diff as UserDiff};
+use haematite_models::irc::network::Network;
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
@@ -13,9 +13,14 @@ use crate::util::DecodeHybrid;
 use super::util::mode::to_changes;
 
 //:00A SJOIN 1658071435 #services +nstk password :@00AAAAAAB
-pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
+pub fn handle<E: EventStore>(
+    event_store: &mut E,
+    network: &mut Network,
+    line: &Line,
+) -> Result<Outcome, Error> {
     Line::assert_arg_count(line, 4..)?;
 
+    let timestamp: u64 = line.args[0].decode().parse().unwrap();
     let channel_name = line.args[1].decode();
     let uids = line.args[line.args.len() - 1]
         .split(|c| c == &b' ')
@@ -23,36 +28,57 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
         .filter(|a| !a.is_empty())
         .collect::<Vec<&[u8]>>();
 
-    let mut diff = Vec::new();
+    let channel = network
+        .channels
+        .entry(channel_name.clone())
+        .or_insert_with(|| Channel {
+            mode_lists: HashMap::from([
+                ('I', HashMap::new()),
+                ('b', HashMap::new()),
+                ('e', HashMap::new()),
+                ('q', HashMap::new()),
+            ]),
+            timestamp,
+            ..Channel::default()
+        });
 
-    let mut new_channel = Channel::new(HashSet::from_iter(vec!['I', 'b', 'e', 'q']));
-
-    if let Some(channel) = network.channels.get(&channel_name) {
-        for nick in channel.users.keys() {
-            new_channel.users.insert(nick.clone(), Membership::new());
-        }
+    if timestamp < channel.timestamp {
+        let mut new_channel = Channel {
+            mode_lists: HashMap::from([
+                ('I', HashMap::new()),
+                ('b', HashMap::new()),
+                ('e', HashMap::new()),
+                ('q', HashMap::new()),
+            ]),
+            timestamp,
+            ..Channel::default()
+        };
+        let users = channel
+            .users
+            .drain()
+            .map(|(u, _)| (u, Membership::default()));
+        new_channel.users = users.collect();
+        std::mem::swap(channel, &mut new_channel);
     }
 
     let modes = to_changes(split_chars(&line.args[2].decode()));
     let mode_args = pair_args(&modes, &line.args[3..line.args.len() - 1])?;
     for (change, arg) in modes.iter().zip(mode_args.iter()) {
-        new_channel
+        channel
             .modes
             .insert(change.mode, arg.map(DecodeHybrid::decode));
     }
 
-    for uid in uids {
-        //TODO: precompile
-        let statuses = HashMap::from([('+', 'v'), ('@', 'o')]);
+    let mut new_uids = Vec::new();
+    let statuses = HashMap::from([(b'+', 'v'), (b'@', 'o')]);
 
-        let mut uid = uid.decode();
+    for mut uid in uids {
+        let mut membership = Membership::default();
 
-        let mut membership = Membership::new();
-
-        while let Some(char) = uid.chars().next() {
-            if let Some(mode) = statuses.get(&char) {
-                membership.status.push(*mode);
-                uid.remove(0);
+        for char in uid {
+            if let Some(mode) = statuses.get(char) {
+                membership.status.insert(*mode);
+                uid = &uid[1..];
             } else {
                 break;
             }
@@ -61,18 +87,22 @@ pub fn handle(network: &Network, line: &Line) -> Result<Outcome, Error> {
         if uid.is_empty() {
             return Err(Error::InvalidArgument);
         }
+        let uid = uid.decode();
 
-        diff.push(NetDiff::InternalUser(
-            uid.clone(),
-            UserDiff::Channel(channel_name.clone(), UserAction::Add),
-        ));
-        new_channel.users.insert(uid, membership);
+        let user = network.users.get_mut(&uid).ok_or(Error::InvalidState)?;
+        user.channels.insert(channel_name.clone());
+
+        new_uids.push(uid.clone());
+        channel.users.insert(uid, membership);
     }
 
-    diff.insert(
-        0,
-        NetDiff::ExternalChannel(channel_name, NetAction::Add(new_channel)),
-    );
+    event_store.store(
+        "channel.burst",
+        haematite_models::event::channel::Burst {
+            name: &channel_name,
+            new_uids: &new_uids,
+        },
+    )?;
 
-    Ok(Outcome::State(diff))
+    Ok(Outcome::Handled)
 }

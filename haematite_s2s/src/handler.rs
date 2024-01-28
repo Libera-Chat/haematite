@@ -1,16 +1,9 @@
-use haematite_models::config::{Config, Error as ConfigError};
-use haematite_models::irc::error::Error as StateError;
-use haematite_models::irc::network::{Diff, Network};
+use haematite_events::EventStore;
 
 use crate::line::Error as LineError;
 use crate::util::mode::PairError;
-
-pub enum Outcome {
-    Unhandled,
-    Empty,
-    Response(Vec<String>),
-    State(Vec<Diff>),
-}
+use haematite_models::irc::error::Error as StateError;
+use haematite_models::irc::network::Network;
 
 #[derive(Debug)]
 pub enum Error {
@@ -19,20 +12,30 @@ pub enum Error {
     InvalidState,
     MissingSource,
     MissingArgument,
+
+    UnknownBan,
+    UnknownChannel,
+    UnknownServer,
+    UnknownUser,
+    UnknownMode,
+    UnknownItem,
+
+    EventStore(haematite_events::event_store::Error),
+}
+
+impl From<haematite_events::event_store::Error> for Error {
+    fn from(value: haematite_events::event_store::Error) -> Self {
+        Self::EventStore(value)
+    }
+}
+
+pub enum Outcome {
+    Responses(Vec<String>),
+    Unhandled,
+    Handled,
 }
 
 pub trait Handler {
-    /// Check if a given `Config` is suitable for this protocol.
-    ///
-    /// # Arguments
-    ///
-    /// * `config` - `Config` object to check.
-    ///
-    /// # Errors
-    ///
-    /// Errors if `config` isn't suitable for this protocol.
-    fn validate_config(&self, config: &Config) -> Result<(), ConfigError>;
-
     /// Retrieve protocol-specific handshake data to send to our uplink.
     ///
     /// # Arguments
@@ -42,7 +45,7 @@ pub trait Handler {
     /// # Errors
     ///
     /// Errors if, for any reason, handshake data cannot be created.
-    fn get_burst<'a>(&self, network: &Network, password: &'a str) -> Result<Vec<String>, String>;
+    fn get_burst(&self, password: &str) -> Result<Vec<String>, String>;
 
     /// Handle a single line of data.
     ///
@@ -53,7 +56,12 @@ pub trait Handler {
     /// # Errors
     ///
     /// Errors if a line cannot be handled.
-    fn handle(&mut self, network: &Network, line: &[u8]) -> Result<Outcome, Error>;
+    fn handle<E: EventStore>(
+        &mut self,
+        event_store: &mut E,
+        network: &mut Network,
+        line: &[u8],
+    ) -> Result<Outcome, Error>;
 }
 
 impl From<StateError> for Error {

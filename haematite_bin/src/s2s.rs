@@ -1,143 +1,125 @@
-use std::io::Error as IoError;
-use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
 use colored::{Color, Colorize};
-use rustls::client::InvalidDnsNameError;
-use tokio::io::{split, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
-use tokio::net::TcpStream;
-use tokio::sync::mpsc;
-use tokio_rustls::TlsConnector;
+use tokio::io::{split, AsyncBufReadExt, BufReader};
+use tokio::sync::mpsc::Sender;
 
 use haematite_models::config::Config;
-use haematite_models::irc::network::{DiffOp, Network};
-use haematite_models::meta::permissions::Path;
+use haematite_models::irc::network::Network;
 use haematite_s2s::handler::{Error as HandlerError, Handler, Outcome};
 use haematite_s2s::DecodeHybrid;
-use haematite_ser::{Serializer, WrapType};
 
-use crate::tls::{make_config, Error as TlsError};
+type EventSenderError = tokio::sync::mpsc::error::SendError<(&'static str, Vec<u8>)>;
 
 #[derive(Debug)]
 pub enum Error {
-    Host,
-    Socket(IoError),
-    Tls(TlsError),
+    Socket(crate::util::socket::Error),
     MakeBurst(String),
-    HandleLine(String, HandlerError),
+    HandleLine(Vec<u8>, HandlerError),
+    EventSender(EventSenderError),
 }
 
-impl From<IoError> for Error {
-    fn from(error: IoError) -> Self {
-        Self::Socket(error)
+impl From<EventSenderError> for Error {
+    fn from(value: EventSenderError) -> Self {
+        Self::EventSender(value)
     }
 }
 
-impl From<InvalidDnsNameError> for Error {
-    fn from(_error: InvalidDnsNameError) -> Self {
-        Self::Host
+impl From<crate::util::socket::Error> for Error {
+    fn from(value: crate::util::socket::Error) -> Self {
+        Self::Socket(value)
     }
 }
 
-impl From<TlsError> for Error {
-    fn from(error: TlsError) -> Self {
-        Self::Tls(error)
-    }
-}
-
-async fn send<T>(socket: &mut T, data: &str) -> Result<(), Error>
-where
-    T: AsyncWrite + Unpin,
-{
-    println!("> {}", data);
-    socket.write_all(data.as_bytes()).await?;
-    socket.write_all(b"\r\n").await?;
-    Ok(())
-}
-
-pub async fn run(
+#[allow(clippy::too_many_lines)]
+pub async fn run<H: Handler + Send>(
     config: &Config,
-    network_lock: Arc<RwLock<Network>>,
-    state_stream: mpsc::Sender<(Path, DiffOp<WrapType>)>,
-    mut handler: impl Handler,
+    mut network: Network,
+    mut handler: H,
+    event_queue: Sender<(&'static str, Vec<u8>)>,
+    verbose: u8,
 ) -> Result<(), Error> {
-    let tconfig = make_config(&config.uplink.ca, &config.tls)?;
-    let connector = TlsConnector::from(Arc::new(tconfig));
-
-    let socket = TcpStream::connect((config.uplink.host.clone(), config.uplink.port)).await?;
-    let socket = connector
-        .connect(config.uplink.host.as_str().try_into()?, socket)
-        .await?;
-
+    let socket = crate::util::socket::make(&config.uplink, &config.mtls).await?;
     let (socket_r, mut socket_w) = split(socket);
 
-    let burst = {
-        let network = network_lock.read().unwrap();
-        handler
-            .get_burst(&network, &config.uplink.password)
-            .map_err(Error::MakeBurst)?
-    };
+    let burst = handler
+        .get_burst(&config.uplink.password)
+        .map_err(Error::MakeBurst)?;
 
     for line in burst {
-        send(&mut socket_w, &line).await?;
+        crate::util::socket::send(&mut socket_w, &line, verbose).await?;
     }
 
-    let mut reader = BufReader::with_capacity(512, socket_r);
-    let mut buffer = Vec::<u8>::with_capacity(512);
+    let mut event_store = haematite_events::event_store::json::EventStore::default();
+    let mut reader = BufReader::new(socket_r);
+    let mut buffer = Vec::with_capacity(512);
     while let Ok(len) = reader.read_until(b'\n', &mut buffer).await {
-        // chop off \r\n
-        buffer.drain(len - 2..len);
+        if len == 0 {
+            break;
+        } else if len > 512 {
+            println!("too big!");
+            break;
+        }
+        let line = &buffer[..len - 2];
+
+        if verbose == 1 {
+            if let Ok(line) = std::str::from_utf8(line) {
+                println!("{line}");
+            }
+        }
 
         let now = Instant::now();
-        let outcome = {
-            let network = network_lock.read().unwrap();
-            handler
-                .handle(&network, &buffer)
-                .map_err(|e| Error::HandleLine(DecodeHybrid::decode(&buffer), e))?
-        };
-        println!(
-            "line handled in {}µs",
-            (now.elapsed().as_nanos() as f64) / 1000.0
-        );
+        let outcome = handler
+            .handle(&mut event_store, &mut network, line)
+            .map_err(|e| Error::HandleLine(line.to_vec(), e))?;
 
-        let printable = DecodeHybrid::decode(&buffer);
+        if verbose > 0 {
+            let elapsed = now.elapsed().as_nanos();
+            println!(
+                "line handled in {}.{:0>3}µs",
+                elapsed / 1000,
+                elapsed % 1000
+            );
+        }
+
         match outcome {
-            Outcome::Unhandled => println!("< {}", printable.color(Color::Red)),
-            Outcome::State(diffs) => {
-                println!("< {}", printable);
-                let mut diffs_out = Vec::new();
+            Outcome::Unhandled => {
+                if verbose > 1 {
+                    let printable = DecodeHybrid::decode(line);
+                    println!("< {}", printable.color(Color::Red));
+                }
+            }
+            Outcome::Handled => {
+                if verbose > 1 {
+                    let printable = DecodeHybrid::decode(line);
+                    println!("< {printable}");
+                }
 
-                {
-                    let mut network = network_lock.write().unwrap();
-
-                    for diff in diffs {
-                        let now = Instant::now();
-                        diffs_out.push((
-                            network.update(diff, &mut Serializer {}).unwrap(),
-                            (now.elapsed().as_nanos() as f64) / 1000.0,
-                        ));
+                while let Some((item_type, payload)) = event_store.payloads.pop_front() {
+                    if verbose > 2 {
+                        println!("{item_type} {:}", std::str::from_utf8(&payload).unwrap());
                     }
-
-                    // scope to make sure `network` is dropped before below await
-                }
-
-                for ((path, value), elapsed) in diffs_out {
-                    println!(
-                        "{} {}",
-                        path.to_string().color(Color::Blue),
-                        serde_json::to_string(&value).unwrap()
-                    );
-                    state_stream.send((path, value)).await.unwrap();
-                    println!("diff handled in {}µs", elapsed);
+                    let now = Instant::now();
+                    event_queue.send((item_type, payload)).await?;
+                    if verbose > 0 {
+                        let elapsed = now.elapsed().as_nanos();
+                        println!(
+                            "event published in {}.{:0>3}us",
+                            elapsed / 1000,
+                            elapsed % 1000
+                        );
+                    }
                 }
             }
-            Outcome::Response(responses) => {
-                println!("< {}", printable);
+            Outcome::Responses(responses) => {
+                if verbose > 1 {
+                    let printable = DecodeHybrid::decode(line);
+                    println!("< {printable}");
+                }
                 for response in responses {
-                    send(&mut socket_w, &response).await?;
+                    crate::util::socket::send(&mut socket_w, &response, verbose).await?;
                 }
             }
-            Outcome::Empty => println!("< {}", printable),
         };
 
         buffer.clear();

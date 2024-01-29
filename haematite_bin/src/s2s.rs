@@ -82,6 +82,23 @@ pub async fn run<H: Handler + Send>(
             );
         }
 
+        while let Some((event_type, event)) = event_store.payloads.pop_front() {
+            if verbose > 2 {
+                println!("{event_type} {:}", std::str::from_utf8(&event).unwrap());
+            }
+
+            let now = Instant::now();
+            event_queue.send((event_type, event)).await?;
+            if verbose > 0 {
+                let elapsed = now.elapsed().as_nanos();
+                println!(
+                    "event published in {}.{:0>3}us",
+                    elapsed / 1000,
+                    elapsed % 1000
+                );
+            }
+        }
+
         match outcome {
             Outcome::Unhandled => {
                 if verbose > 1 {
@@ -93,22 +110,6 @@ pub async fn run<H: Handler + Send>(
                 if verbose > 1 {
                     let printable = DecodeHybrid::decode(line);
                     println!("< {printable}");
-                }
-
-                while let Some((item_type, payload)) = event_store.payloads.pop_front() {
-                    if verbose > 2 {
-                        println!("{item_type} {:}", std::str::from_utf8(&payload).unwrap());
-                    }
-                    let now = Instant::now();
-                    event_queue.send((item_type, payload)).await?;
-                    if verbose > 0 {
-                        let elapsed = now.elapsed().as_nanos();
-                        println!(
-                            "event published in {}.{:0>3}us",
-                            elapsed / 1000,
-                            elapsed % 1000
-                        );
-                    }
                 }
             }
             Outcome::Responses(responses) => {

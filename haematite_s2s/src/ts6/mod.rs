@@ -28,10 +28,12 @@ use haematite_models::config::Error as ConfigError;
 use haematite_models::irc::network::Network;
 use haematite_models::irc::server::Server;
 use regex::Regex;
+use std::collections::HashMap;
 use std::time::SystemTime;
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
+use crate::DecodeHybrid as _;
 
 const CAPABS: [&str; 18] = [
     "BAN", "CHW", "CLUSTER", "EBMASK", "ECHO", "ENCAP", "EOPMOD", "EUID", "EX", "IE", "KLN",
@@ -42,6 +44,7 @@ const CAPABS: [&str; 18] = [
 #[must_use]
 pub struct Handler {
     me: Server,
+    pub times: HashMap<String, Vec<u128>>,
 }
 
 impl TryFrom<Server> for Handler {
@@ -57,7 +60,10 @@ impl TryFrom<Server> for Handler {
         } else if !regex_name.is_match(&server.name) {
             Err(ConfigError::InvalidName)
         } else {
-            Ok(Self { me: server })
+            Ok(Self {
+                me: server,
+                times: HashMap::default(),
+            })
         }
     }
 }
@@ -85,9 +91,10 @@ impl crate::handler::Handler for Handler {
         network: &mut Network,
         line: &[u8],
     ) -> Result<Outcome, Error> {
+        let now = std::time::Instant::now();
         let line = Line::try_from_rfc1459(line)?;
 
-        match line.command.as_slice() {
+        let result = match line.command.as_slice() {
             b"AWAY" => away::handle(event_store, network, &line),
             b"BAN" => ban::handle(event_store, network, &line),
             b"BMASK" => bmask::handle(event_store, network, &line),
@@ -112,6 +119,16 @@ impl crate::handler::Handler for Handler {
             b"TMODE" => tmode::handle(event_store, network, &line),
             b"TOPIC" => topic::handle(event_store, network, &line),
             _ => Ok(Outcome::Unhandled),
+        };
+
+        let elapsed = now.elapsed().as_nanos();
+        let command = line.command.decode();
+        if let Some(times) = self.times.get_mut(&command) {
+            times.push(elapsed);
+        } else {
+            self.times.insert(command, Vec::from([elapsed]));
         }
+
+        result
     }
 }

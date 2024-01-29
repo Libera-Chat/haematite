@@ -34,8 +34,8 @@ impl From<crate::util::socket::Error> for Error {
 #[allow(clippy::too_many_lines)]
 pub async fn run<H: Handler + Send>(
     config: &Config,
-    mut network: Network,
-    mut handler: H,
+    network: &mut Network,
+    handler: &mut H,
     event_queue: Sender<(&'static str, Vec<u8>)>,
     verbose: u8,
 ) -> Result<(), Error> {
@@ -70,7 +70,7 @@ pub async fn run<H: Handler + Send>(
 
         let now = Instant::now();
         let outcome = handler
-            .handle(&mut event_store, &mut network, line)
+            .handle(&mut event_store, network, line)
             .map_err(|e| Error::HandleLine(line.to_vec(), e))?;
 
         if verbose > 0 {

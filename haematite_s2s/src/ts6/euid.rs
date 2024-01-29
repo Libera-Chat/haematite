@@ -53,7 +53,7 @@ pub fn handle<E: EventStore>(
 
     let modes = &line.args[3];
     event_store.store(
-        "user.connected",
+        "user.connect",
         haematite_models::event::user::Connected {
             uid: &uid,
             nick: &user.nick,

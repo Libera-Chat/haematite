@@ -66,13 +66,13 @@ async fn main() {
 
     let config = Config::from_file(args.config).unwrap();
 
-    let s2s_handler = haematite_s2s::ts6::Handler::try_from(config.server.clone()).unwrap();
+    let mut s2s_handler = haematite_s2s::ts6::Handler::try_from(config.server.clone()).unwrap();
 
     let events_handler = haematite_events::handler::amqp::Handler::connect(&config.amqp.address)
         .await
         .unwrap();
 
-    let network = Network {
+    let mut network = Network {
         me: config.server.clone(),
         ..Network::default()
     };
@@ -80,8 +80,22 @@ async fn main() {
     let (tx, rx) = tokio::sync::mpsc::channel(100_000_000);
 
     tokio::try_join!(
-        run_s2s(&config, network, s2s_handler, tx, args.verbose).map_err(Error::from),
+        run_s2s(&config, &mut network, &mut s2s_handler, tx, args.verbose).map_err(Error::from),
         run_events(events_handler, rx).map_err(Error::from),
     )
     .unwrap();
+
+    for (command, times) in s2s_handler.times {
+        let command = format!("{command}:");
+        let nanoseconds: u128 = times.iter().sum();
+        let average = nanoseconds / (times.len() as u128);
+        println!(
+            "{command: <7}   {:0>3}.{:0>6}ms overall   {:0>2}.{:0>3}μs avg   {: >5} lines",
+            nanoseconds / 1_000_000,
+            nanoseconds % 1_000_000,
+            average / 1_000,
+            average % 1_000,
+            times.len(),
+        );
+    }
 }

@@ -4,29 +4,58 @@ use haematite_models::irc::ban::Ban;
 use haematite_models::irc::hostmask::{Error as HostmaskError, Hostmask};
 use haematite_models::irc::network::Network;
 use haematite_models::irc::oper::Oper;
-use regex::Regex;
 
 use crate::handler::{Error, Outcome};
 use crate::line::Line;
 use crate::util::DecodeHybrid as _;
 
-fn parse_oper(mut oper: &str) -> Result<Oper, HostmaskError> {
-    //TODO: precompile this
-    let oper_regex = Regex::new(r"^([^{]+)\{(\S+)\}$").unwrap();
+enum OperStage {
+    Oper,
+    Hostmask,
+}
 
-    let hostmask = match oper_regex.captures(oper) {
-        Some(hmatch) => {
-            let hostmask = hmatch.get(1).unwrap().as_str();
-            oper = hmatch.get(2).unwrap().as_str();
-            Some(Hostmask::try_from(hostmask)?)
-        }
-        None => None,
-    };
+enum ParseOperError {
+    Hostmask(HostmaskError),
+    Format,
+}
 
-    Ok(Oper {
-        name: oper.to_string(),
-        hostmask,
-    })
+impl From<HostmaskError> for ParseOperError {
+    fn from(value: HostmaskError) -> Self {
+        Self::Hostmask(value)
+    }
+}
+
+fn parse_oper(value: &str) -> Result<Oper, ParseOperError> {
+    let mut hostmask = String::new();
+    let mut opername = String::new();
+    let mut stage = OperStage::Hostmask;
+
+    for char in value.chars() {
+        match stage {
+            OperStage::Hostmask => {
+                if char == '{' {
+                    stage = OperStage::Oper;
+                } else {
+                    hostmask.push(char);
+                }
+            }
+            OperStage::Oper => {
+                if char == '}' {
+                    break;
+                }
+                opername.push(char);
+            }
+        };
+    }
+
+    if opername.is_empty() {
+        Err(ParseOperError::Format)
+    } else {
+        Ok(Oper {
+            name: opername.to_string(),
+            hostmask: Some(Hostmask::try_from(hostmask.as_str())?),
+        })
+    }
 }
 
 pub fn handle<E: EventStore>(
@@ -57,17 +86,12 @@ pub fn handle<E: EventStore>(
     );
 
     let mask = format!("{}@{}", line.args[1].decode(), line.args[2].decode());
-
-    event_store.store(
-        "ban.add",
-        haematite_models::event::network::AddBan { mask: &mask },
-    )?;
-
+    let expires = since + duration;
     if duration.is_zero() {
         if network.bans.contains_key(&mask) {
             network.bans.remove(&mask);
         }
-    } else if since + duration < Utc::now().naive_utc() {
+    } else if expires < Utc::now().naive_utc() {
         // expired
     } else {
         let setter =
@@ -75,11 +99,22 @@ pub fn handle<E: EventStore>(
         let reason = line.args[7].decode();
 
         let ban = Ban {
+            expires,
             reason,
-            since,
-            duration: duration.to_std().map_err(|_| Error::InvalidArgument)?,
             setter,
+            since,
         };
+
+        event_store.store(
+            "ban.add",
+            haematite_models::event::network::AddBan {
+                expires: &ban.expires,
+                mask: &mask,
+                reason: &ban.reason,
+                setter: &ban.setter,
+                since: &ban.since,
+            },
+        )?;
 
         network.bans.insert(mask, ban);
     };

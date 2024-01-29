@@ -16,4 +16,5 @@ impl From<lapin::Error> for Error {
 #[async_trait]
 pub trait Handler {
     async fn publish(&mut self, topic: &'static str, payload: &[u8]) -> Result<(), Error>;
+    async fn finish(&mut self);
 }

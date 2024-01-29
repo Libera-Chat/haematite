@@ -17,5 +17,8 @@ pub async fn run<H: haematite_events::handler::Handler + Send>(
     while let Some((payload_type, payload)) = rx.recv().await {
         handler.publish(payload_type, &payload).await?;
     }
+
+    handler.finish().await;
+
     Ok(())
 }

@@ -30,4 +30,7 @@ impl crate::handler::Handler for Handler {
             .await?;
         Ok(())
     }
+    async fn finish(&mut self) {
+        self.chan.close(200, "no dramas man").await.unwrap();
+    }
 }

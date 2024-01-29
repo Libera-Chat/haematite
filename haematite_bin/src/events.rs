@@ -1,5 +1,6 @@
 use tokio::sync::mpsc::Receiver;
 
+#[derive(Debug)]
 pub enum Error {
     Handler(haematite_events::handler::Error),
 }

@@ -44,19 +44,19 @@ impl FromFile for Config {
 
 #[derive(Debug)]
 enum Error {
-    S2s,
-    Events,
+    S2s(self::s2s::Error),
+    Events(self::events::Error),
 }
 
 impl From<self::s2s::Error> for Error {
-    fn from(_value: self::s2s::Error) -> Self {
-        Self::S2s
+    fn from(value: self::s2s::Error) -> Self {
+        Self::S2s(value)
     }
 }
 
 impl From<self::events::Error> for Error {
-    fn from(_value: self::events::Error) -> Self {
-        Self::Events
+    fn from(value: self::events::Error) -> Self {
+        Self::Events(value)
     }
 }
 

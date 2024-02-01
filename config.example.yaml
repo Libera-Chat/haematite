@@ -15,6 +15,3 @@ mtls:
 
 amqp:
   address: "amqp://haematite:hunter2@husky.vpn.lolnerd.net:5672"
-
-bind: "[fd84:9d71:8b8:1::1]:8085"
-database: postgress:///jess

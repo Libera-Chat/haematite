@@ -1,4 +1,3 @@
-use std::net::SocketAddr;
 use std::path::PathBuf;
 
 use serde::Deserialize;
@@ -28,8 +27,6 @@ pub struct Config {
     pub server: Server,
     pub uplink: Uplink,
     pub mtls: Mtls,
-    pub bind: SocketAddr,
-    pub database: String,
     pub amqp: Amqp,
 }
 
